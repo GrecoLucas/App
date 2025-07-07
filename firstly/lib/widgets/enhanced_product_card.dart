@@ -203,77 +203,71 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                       ],
                     ),
                   ),
-                  // Botões de ação responsivos
-                  isSmallScreen
-                      ? Column(
+                  // Menu dropdown com as ações
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'favorite':
+                          _toggleFavorite();
+                          break;
+                        case 'edit':
+                          widget.onEdit();
+                          break;
+                        case 'delete':
+                          widget.onDelete();
+                          break;
+                      }
+                    },
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: AppTheme.darkGreen,
+                      size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'favorite',
+                        child: Row(
                           children: [
-                            IconButton(
-                              onPressed: _toggleFavorite,
-                              icon: Icon(
-                                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: _isFavorite ? Colors.red : Colors.grey,
-                                size: AppConstants.iconSmall,
-                              ),
-                              tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.all(AppConstants.paddingSmall),
+                            Icon(
+                              _isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: _isFavorite ? Colors.red : Colors.grey,
+                              size: 20,
                             ),
-                            IconButton(
-                              onPressed: widget.onEdit,
-                              icon: Icon(
-                                Icons.edit_outlined,
-                                color: AppTheme.accentBlue,
-                                size: AppConstants.iconSmall,
-                              ),
-                              tooltip: 'Editar',
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.all(AppConstants.paddingSmall),
-                            ),
-                            IconButton(
-                              onPressed: widget.onDelete,
-                              icon: Icon(
-                                Icons.delete_outline,
-                                color: AppTheme.warningRed,
-                                size: AppConstants.iconSmall,
-                              ),
-                              tooltip: 'Remover',
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.all(AppConstants.paddingSmall),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: _toggleFavorite,
-                              icon: Icon(
-                                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: _isFavorite ? Colors.red : Colors.grey,
-                                size: AppConstants.iconMedium,
-                              ),
-                              tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
-                            ),
-                            IconButton(
-                              onPressed: widget.onEdit,
-                              icon: Icon(
-                                Icons.edit_outlined,
-                                color: AppTheme.accentBlue,
-                                size: AppConstants.iconMedium,
-                              ),
-                              tooltip: 'Editar',
-                            ),
-                            IconButton(
-                              onPressed: widget.onDelete,
-                              icon: Icon(
-                                Icons.delete_outline,
-                                color: AppTheme.warningRed,
-                                size: AppConstants.iconMedium,
-                              ),
-                              tooltip: 'Remover',
-                            ),
+                            const SizedBox(width: 12),
+                            Text(_isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'),
                           ],
                         ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_outlined,
+                              color: AppTheme.accentBlue,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            const Text('Editar'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: AppTheme.warningRed,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            const Text('Remover'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ],

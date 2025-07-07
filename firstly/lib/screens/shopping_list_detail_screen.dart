@@ -321,30 +321,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton.extended(
-            onPressed: _addFavoriteProducts,
-            tooltip: 'Adicionar Favoritos',
-            backgroundColor: AppTheme.warningRed,
-            foregroundColor: Colors.white,
-            heroTag: "fab_favorites",
-            icon: const Icon(Icons.favorite),
-            label: const Text('Favoritos'),
-          ),
-          const SizedBox(height: 16),
-          FloatingActionButton.extended(
-            onPressed: _addProduct,
-            tooltip: 'Adicionar Produto',
-            icon: const Icon(Icons.add),
-            label: const Text('Adicionar'),
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            heroTag: "fab_add",
-          ),
-        ],
-      ),
     );
   }
 
@@ -445,6 +421,45 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               const SizedBox(height: AppConstants.paddingLarge),
               _buildBudgetProgress(),
             ],
+            // Botões de ação fixos
+            const SizedBox(height: AppConstants.paddingLarge),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _addFavoriteProducts,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.warningRed,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.favorite, size: 18),
+                    label: const Text('Favoritos'),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingMedium),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _addProduct,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Adicionar'),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -510,44 +525,18 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(
-              left: AppConstants.paddingSmall,
-              bottom: AppConstants.paddingMedium,
-            ),
-            child: Row(
-              children: [
-                Text(
-                  'Produtos (${widget.shoppingList.items.length})',
-                  style: AppStyles.bodyLarge.copyWith(
-                    color: AppTheme.darkGreen,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingMedium),
-                SortInfoChip(criteria: _currentSortCriteria),
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: sortedItems.length,
-              itemBuilder: (context, index) {
-                final item = sortedItems[index];
-                // Encontra o índice original do item para as operações de edição e remoção
-                final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
-                return EnhancedProductCard(
-                  item: item,
-                  onEdit: () => _editProduct(originalIndex),
-                  onDelete: () => _removeProduct(originalIndex),
-                );
-              },
-            ),
-          ),
-        ],
+      child: ListView.builder(
+        itemCount: sortedItems.length,
+        itemBuilder: (context, index) {
+          final item = sortedItems[index];
+          // Encontra o índice original do item para as operações de edição e remoção
+          final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
+          return EnhancedProductCard(
+            item: item,
+            onEdit: () => _editProduct(originalIndex),
+            onDelete: () => _removeProduct(originalIndex),
+          );
+        },
       ),
     );
   }
