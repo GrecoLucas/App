@@ -123,31 +123,14 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                widget.item.name,
-                                style: AppStyles.bodyLarge.copyWith(
-                                  color: AppTheme.darkGreen,
-                                  fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.bodyLarge.fontSize!),
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: _toggleFavorite,
-                              icon: Icon(
-                                _isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: _isFavorite ? Colors.red : Colors.grey,
-                                size: isSmallScreen ? 18 : 20,
-                              ),
-                              tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ],
+                        Text(
+                          widget.item.name,
+                          style: AppStyles.bodyLarge.copyWith(
+                            color: AppTheme.darkGreen,
+                            fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.bodyLarge.fontSize!),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         // Informações de preço em layout responsivo
@@ -225,6 +208,17 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                       ? Column(
                           children: [
                             IconButton(
+                              onPressed: _toggleFavorite,
+                              icon: Icon(
+                                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: _isFavorite ? Colors.red : Colors.grey,
+                                size: AppConstants.iconSmall,
+                              ),
+                              tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.all(AppConstants.paddingSmall),
+                            ),
+                            IconButton(
                               onPressed: widget.onEdit,
                               icon: Icon(
                                 Icons.edit_outlined,
@@ -251,6 +245,15 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                       : Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              onPressed: _toggleFavorite,
+                              icon: Icon(
+                                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: _isFavorite ? Colors.red : Colors.grey,
+                                size: AppConstants.iconMedium,
+                              ),
+                              tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
+                            ),
                             IconButton(
                               onPressed: widget.onEdit,
                               icon: Icon(

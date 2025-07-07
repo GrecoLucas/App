@@ -40,33 +40,11 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
     final items = await FavoriteItemsService.getSortedFavoriteItems(FavoriteSortCriteria.mostUsed);
     print('Carregados ${items.length} itens favoritos: ${items.map((e) => e.name).toList()}');
     
-    // Adicionar alguns favoritos de teste se a lista estiver vazia
-    if (items.isEmpty) {
-      print('Nenhum favorito encontrado, adicionando itens de teste...');
-      final testFavorites = [
-        FavoriteItem(name: 'Pão', defaultPrice: 1.50, defaultQuantity: 1, usageCount: 5),
-        FavoriteItem(name: 'Leite', defaultPrice: 0.85, defaultQuantity: 1, usageCount: 8),
-        FavoriteItem(name: 'Ovos', defaultPrice: 2.20, defaultQuantity: 12, usageCount: 3),
-      ];
-      
-      for (final favorite in testFavorites) {
-        await FavoriteItemsService.addFavoriteItem(favorite);
-      }
-      
-      // Recarregar os favoritos
-      final updatedItems = await FavoriteItemsService.getSortedFavoriteItems(FavoriteSortCriteria.mostUsed);
-      setState(() {
-        _favoriteItems = updatedItems;
-        _filteredItems = updatedItems;
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _favoriteItems = items;
-        _filteredItems = items;
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _favoriteItems = items;
+      _filteredItems = items;
+      _isLoading = false;
+    });
   }
 
   void _filterItems() {
