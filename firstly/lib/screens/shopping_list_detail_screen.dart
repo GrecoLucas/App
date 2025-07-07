@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../models/list.dart';
 import '../models/item.dart';
 import '../utils/app_theme.dart';
-import '../widgets/product_widgets.dart';
+import '../widgets/enhanced_add_product_dialog.dart';
+import '../widgets/enhanced_product_card.dart';
+import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
 
@@ -143,6 +145,38 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ],
         );
       },
+    );
+  }
+
+  // Adiciona múltiplos produtos favoritos à lista
+  void _addFavoriteProducts() async {
+    showDialog<void>(
+      context: context,
+      builder: (context) => QuickAddFavoritesDialog(
+        onItemsSelected: (items) {
+          print('Recebidos ${items.length} itens favoritos: $items');
+          // Esta função será chamada quando os itens forem selecionados
+          setState(() {
+            for (final itemData in items) {
+              final newItem = Item(
+                name: itemData['name'], 
+                price: itemData['price'],
+                quantity: itemData['quantity'] ?? 1,
+              );
+              print('Adicionando item: ${newItem.name}, preço: ${newItem.price}, quantidade: ${newItem.quantity}');
+              widget.shoppingList.addItem(newItem);
+            }
+          });
+          widget.onUpdate();
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos'),
+              backgroundColor: AppTheme.primaryGreen,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -287,13 +321,29 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addProduct,
-        tooltip: 'Adicionar Produto',
-        icon: const Icon(Icons.add),
-        label: const Text('Adicionar'),
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: _addFavoriteProducts,
+            tooltip: 'Adicionar Favoritos',
+            backgroundColor: AppTheme.warningRed,
+            foregroundColor: Colors.white,
+            heroTag: "fab_favorites",
+            icon: const Icon(Icons.favorite),
+            label: const Text('Favoritos'),
+          ),
+          const SizedBox(height: 16),
+          FloatingActionButton.extended(
+            onPressed: _addProduct,
+            tooltip: 'Adicionar Produto',
+            icon: const Icon(Icons.add),
+            label: const Text('Adicionar'),
+            backgroundColor: AppTheme.primaryGreen,
+            foregroundColor: Colors.white,
+            heroTag: "fab_add",
+          ),
+        ],
       ),
     );
   }
@@ -489,7 +539,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 final item = sortedItems[index];
                 // Encontra o índice original do item para as operações de edição e remoção
                 final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
-                return ProductCard(
+                return EnhancedProductCard(
                   item: item,
                   onEdit: () => _editProduct(originalIndex),
                   onDelete: () => _removeProduct(originalIndex),

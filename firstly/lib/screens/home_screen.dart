@@ -4,6 +4,7 @@ import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
 import 'shopping_list_detail_screen.dart';
+import 'favorite_items_screen.dart';
 
 enum ListSortCriteria {
   nameAscending,
@@ -391,6 +392,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FavoriteItemsScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.favorite),
+            tooltip: 'Itens Favoritos',
+          ),
           if (shoppingLists.isNotEmpty)
             ListSortOptionsWidget(
               currentCriteria: _currentListSortCriteria,
@@ -657,12 +670,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                             const SizedBox(width: AppConstants.paddingSmall),
-                            Text(
-                              '(${list.budgetUsagePercentage.toStringAsFixed(0)}%)',
-                              style: AppStyles.captionGrey.copyWith(
-                                color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.textGrey,
-                              ),
-                            ),
                           ],
                         ),
                       ],
