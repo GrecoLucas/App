@@ -306,35 +306,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 }
               }
               
-              // Se não está editando e não é favorito, perguntar se quer adicionar aos favoritos
-              if (!widget.isEditing && !_isFavorite && productName.trim().isNotEmpty) {
-                final shouldAddToFavorites = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Adicionar aos Favoritos?'),
-                    content: Text('Deseja adicionar "${productName.trim()}" aos seus favoritos para acesso rápido em futuras compras?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Não'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text('Sim'),
-                      ),
-                    ],
-                  ),
-                );
-                
-                if (shouldAddToFavorites == true) {
-                  final favoriteItem = FavoriteItemsService.createFavoriteFromItem(
-                    productName.trim(),
-                    price,
-                    selectedQuantity,
-                  );
-                  await FavoriteItemsService.addFavoriteItem(favoriteItem);
-                }
-              }
+
               
               // Se está editando e é favorito, incrementar uso
               if (!widget.isEditing && _isFavorite) {
