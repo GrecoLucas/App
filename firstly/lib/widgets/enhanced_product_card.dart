@@ -22,6 +22,7 @@ class EnhancedProductCard extends StatefulWidget {
 
 class _EnhancedProductCardState extends State<EnhancedProductCard> {
   bool _isFavorite = false;
+  bool _isInCart = false;
 
   @override
   void initState() {
@@ -92,6 +93,28 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
             children: [
               Row(
                 children: [
+                  // Checkbox para indicar se está no carrinho
+                  Transform.scale(
+                    scale: isSmallScreen ? 1.0 : 1.2,
+                    child: Checkbox(
+                      value: _isInCart,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          _isInCart = value ?? false;
+                        });
+                      },
+                      activeColor: AppTheme.primaryGreen,
+                      checkColor: Colors.white,
+                      side: BorderSide(
+                        color: AppTheme.primaryGreen.withOpacity(0.6),
+                        width: 2,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)),
                   Container(
                     width: isSmallScreen ? 50 : 60,
                     height: isSmallScreen ? 50 : 60,
