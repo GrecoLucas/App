@@ -532,4 +532,18 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
       ),
     );
   }
+
+  Widget _buildDefaultIcon() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+      ),
+      child: const Icon(
+        Icons.shopping_basket,
+        color: Colors.white,
+        size: 28,
+      ),
+    );
+  }
 }
