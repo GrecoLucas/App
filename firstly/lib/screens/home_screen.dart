@@ -5,6 +5,7 @@ import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
 import 'shopping_list_detail_screen.dart';
 import 'favorite_items_screen.dart';
+import 'expense_lists_screen.dart';
 
 enum ListSortCriteria {
   nameAscending,
@@ -392,18 +393,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FavoriteItemsScreen(),
-                ),
-              );
-            },
-            icon: const Icon(Icons.favorite),
-            tooltip: 'Itens Favoritos',
-          ),
           if (shoppingLists.isNotEmpty)
             ListSortOptionsWidget(
               currentCriteria: _currentListSortCriteria,
@@ -416,33 +405,150 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         shadowColor: Colors.black12,
         surfaceTintColor: Colors.transparent,
       ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
-              ),
-            )
-          : shoppingLists.isEmpty
-              ? _buildEmptyState()
-          : _buildShoppingLists(),
-      floatingActionButton: Container(
-        decoration: const BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 8,
-              offset: Offset(0, 4),
+      body: Column(
+        children: [
+          _buildMainNavigationButtons(),
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                    ),
+                  )
+                : shoppingLists.isEmpty
+                    ? _buildEmptyState()
+                    : _buildShoppingLists(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainNavigationButtons() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.all(AppConstants.paddingLarge),
+      child: Column(
+        children: [
+          // Botão Nova Lista de Compras
+          _buildNavigationButton(
+            icon: Icons.add_shopping_cart,
+            title: 'Nova Lista de Compras',
+            subtitle: 'Organize suas compras com orçamento',
+            gradient: AppTheme.primaryGradient,
+            onTap: _addNewList,
+          ),
+          const SizedBox(height: AppConstants.paddingMedium),
+          
+          // Botão Favoritos
+          _buildNavigationButton(
+            icon: Icons.favorite,
+            title: 'Favoritos',
+            subtitle: 'Produtos salvos para reutilizar',
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE91E63), Color(0xFFF06292)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: _addNewList,
-          tooltip: 'Adicionar Nova Lista',
-          icon: const Icon(Icons.add),
-          label: const Text('Nova Lista'),
-          backgroundColor: AppTheme.primaryGreen,
-          foregroundColor: Colors.white,
-          elevation: 0,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const FavoriteItemsScreen(),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: AppConstants.paddingMedium),
+          
+          // Botão Listas de Gastos
+          _buildNavigationButton(
+            icon: Icons.qr_code_scanner,
+            title: 'Listas de Gastos',
+            subtitle: 'Escaneie códigos e controle gastos',
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2196F3), Color(0xFF64B5F6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ExpenseListsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavigationButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Gradient gradient,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+        boxShadow: const [AppStyles.mediumShadow],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+          child: Padding(
+            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: AppConstants.iconLarge,
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingLarge),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppStyles.bodyLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.white.withOpacity(0.8),
+                  size: AppConstants.iconMedium,
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -450,60 +556,62 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
-              boxShadow: const [AppStyles.softShadow],
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.paddingLarge),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppConstants.paddingXLarge),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+                boxShadow: const [AppStyles.softShadow],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_cart_outlined,
+                      size: AppConstants.iconXLarge,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.paddingLarge),
+                  Text(
+                    'Nenhuma lista criada ainda',
+                    style: AppStyles.headingMedium.copyWith(
+                      color: AppTheme.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.paddingSmall),
+                  const Text(
+                    'Toque em "Nova Lista de Compras" acima para começar a organizar suas compras!',
+                    style: AppStyles.bodyMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppConstants.paddingLarge),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-                  ),
-                  child: const Icon(
-                    Icons.shopping_cart_outlined,
-                    size: AppConstants.iconXLarge,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.paddingLarge),
-                Text(
-                  'Bem-vindo ao SmartShop!',
-                  style: AppStyles.headingMedium.copyWith(
-                    color: AppTheme.primaryGreen,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.paddingSmall),
-                const Text(
-                  'Organize suas compras de forma inteligente',
-                  style: AppStyles.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppConstants.paddingMedium),
-                const Text(
-                  'Toque em "Nova Lista" para começar!',
-                  style: AppStyles.captionGrey,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildShoppingLists() {
     return Padding(
-      padding: const EdgeInsets.all(AppConstants.paddingMedium),
+      padding: const EdgeInsets.fromLTRB(
+        AppConstants.paddingMedium,
+        0,
+        AppConstants.paddingMedium,
+        AppConstants.paddingMedium,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
