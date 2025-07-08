@@ -250,6 +250,39 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
     );
   }
 
+  void _addManualItem() {
+    showDialog(
+      context: context,
+      builder: (context) => _ManualItemDialog(
+        onSave: (newItem) async {
+          print('Adicionando item manual: ${newItem.name}');
+          
+          // Adiciona o item à lista (sem salvar na base de dados)
+          widget.expenseList.addItem(newItem);
+          
+          // Atualiza a lista no armazenamento
+          await BarcodeService.updateExpenseList(widget.expenseList);
+          
+          // Força o rebuild da tela
+          setState(() {});
+          
+          // Chama callback de atualização
+          widget.onUpdate();
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${newItem.name} adicionado à lista'),
+                backgroundColor: AppTheme.accentBlue,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -294,12 +327,27 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _scanBarcode,
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.qr_code_scanner),
-        label: const Text('Escanear'),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton.extended(
+            onPressed: _addManualItem,
+            backgroundColor: AppTheme.accentBlue,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.edit),
+            label: const Text('Inserir Manualmente'),
+            heroTag: "manual_add",
+          ),
+          const SizedBox(height: AppConstants.paddingMedium),
+          FloatingActionButton.extended(
+            onPressed: _scanBarcode,
+            backgroundColor: AppTheme.primaryGreen,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('Escanear'),
+            heroTag: "scan_barcode",
+          ),
+        ],
       ),
     );
   }
@@ -587,6 +635,186 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
           );
         },
       ),
+    );
+  }
+}
+
+class _ManualItemDialog extends StatefulWidget {
+  final Function(ScannedItem) onSave;
+
+  const _ManualItemDialog({
+    required this.onSave,
+  });
+
+  @override
+  State<_ManualItemDialog> createState() => _ManualItemDialogState();
+}
+
+class _ManualItemDialogState extends State<_ManualItemDialog> {
+  late TextEditingController nameController;
+  late TextEditingController priceController;
+  int quantity = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController();
+    priceController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    priceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+      ),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.accentBlue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+            ),
+            child: const Icon(
+              Icons.edit,
+              color: AppTheme.accentBlue,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: AppConstants.paddingMedium),
+          const Expanded(
+            child: Text('Inserir Manualmente'),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              decoration: BoxDecoration(
+                color: AppTheme.accentBlue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    color: AppTheme.accentBlue,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Use para produtos sem código de barras (frutas, carnes, etc.)',
+                      style: AppStyles.bodyMedium.copyWith(
+                        color: AppTheme.accentBlue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppConstants.paddingLarge),
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(
+                labelText: 'Nome do Produto',
+                hintText: 'Ex: Bananas, Carne de Vaca...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                filled: true,
+                fillColor: AppTheme.softGrey,
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: AppConstants.paddingMedium),
+            TextField(
+              controller: priceController,
+              decoration: InputDecoration(
+                labelText: 'Preço',
+                prefixText: '€ ',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                filled: true,
+                fillColor: AppTheme.softGrey,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: AppConstants.paddingMedium),
+            DropdownButtonFormField<int>(
+              value: quantity,
+              decoration: InputDecoration(
+                labelText: 'Quantidade',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                filled: true,
+                fillColor: AppTheme.softGrey,
+              ),
+              items: List.generate(20, (index) => index + 1)
+                  .map((qty) => DropdownMenuItem<int>(
+                        value: qty,
+                        child: Text('$qty'),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  quantity = value ?? 1;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (nameController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Digite o nome do produto')),
+              );
+              return;
+            }
+            
+            final price = double.tryParse(
+              priceController.text.replaceAll(',', '.').replaceAll('€', '').trim(),
+            ) ?? 0.0;
+            
+            // Gerar um código único para produtos manuais (não será salvo na base de dados)
+            final uniqueBarcode = 'MANUAL_${DateTime.now().millisecondsSinceEpoch}';
+            
+            final newItem = ScannedItem.create(
+              barcode: uniqueBarcode,
+              name: nameController.text.trim(),
+              price: price,
+              quantity: quantity,
+            );
+            
+            Navigator.pop(context);
+            widget.onSave(newItem);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.accentBlue,
+            foregroundColor: Colors.white,
+          ),
+          child: const Text('Adicionar à Lista'),
+        ),
+      ],
     );
   }
 }
