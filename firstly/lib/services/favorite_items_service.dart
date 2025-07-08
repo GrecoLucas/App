@@ -22,6 +22,11 @@ class FavoriteItemsService {
       final itemsJson = items.map((item) => item.toMap()).toList();
       final jsonString = jsonEncode(itemsJson);
       await prefs.setString(_favoriteItemsKey, jsonString);
+      print('=== SALVANDO FAVORITOS ===');
+      print('Total de itens: ${items.length}');
+      for (var item in items) {
+        print('Item: ${item.name}, Imagem: ${item.imagePath ?? "sem imagem"}');
+      }
     } catch (e) {
       print('Erro ao salvar itens favoritos: $e');
     }
@@ -38,7 +43,15 @@ class FavoriteItemsService {
       }
 
       final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((json) => FavoriteItem.fromMap(json)).toList();
+      final items = jsonList.map((json) => FavoriteItem.fromMap(json)).toList();
+      
+      print('=== CARREGANDO FAVORITOS ===');
+      print('Total de itens carregados: ${items.length}');
+      for (var item in items) {
+        print('Item: ${item.name}, Imagem: ${item.imagePath ?? "sem imagem"}');
+      }
+      
+      return items;
     } catch (e) {
       print('Erro ao carregar itens favoritos: $e');
       return [];
@@ -56,12 +69,19 @@ class FavoriteItemsService {
       );
       
       if (existingIndex >= 0) {
-        // Se já existe, atualiza o preço padrão e incrementa o uso
+        // Se já existe, atualiza o preço padrão, incrementa o uso E preserva/atualiza a imagem
         items[existingIndex].updateDefaultPrice(item.defaultPrice);
         items[existingIndex].incrementUsage();
+        
+        // Atualiza a imagem se uma nova foi fornecida
+        if (item.imagePath != null && item.imagePath!.isNotEmpty) {
+          items[existingIndex].imagePath = item.imagePath;
+          print('Imagem atualizada para item existente: ${item.imagePath}');
+        }
       } else {
         // Se não existe, adiciona o novo item
         items.add(item);
+        print('Novo item favorito adicionado com imagem: ${item.imagePath}');
       }
       
       await saveFavoriteItems(items);

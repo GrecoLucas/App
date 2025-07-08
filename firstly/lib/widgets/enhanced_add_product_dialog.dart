@@ -1,6 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
+import '../services/image_service.dart';
 import '../utils/app_theme.dart';
 
 class AddProductDialog extends StatefulWidget {
@@ -28,6 +31,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   String productPrice = '';
   int selectedQuantity = 1;
   bool _isFavorite = false;
+  final ImageService _imageService = ImageService();
 
   @override
   void initState() {
@@ -54,6 +58,146 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (productName.trim().isNotEmpty) {
       final isFav = await FavoriteItemsService.isFavorite(productName.trim());
       setState(() => _isFavorite = isFav);
+    }
+  }
+
+  Future<void> _pickAndSaveImage() async {
+    final String? choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Adicionar Imagem'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galeria'),
+              subtitle: const Text('Escolher uma foto existente'),
+              onTap: () {
+                Navigator.of(context).pop('gallery');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Câmera'),
+              subtitle: const Text('Tirar uma nova foto'),
+              onTap: () {
+                Navigator.of(context).pop('camera');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.no_photography),
+              title: const Text('Sem imagem'),
+              subtitle: const Text('Adicionar sem foto'),
+              onTap: () {
+                Navigator.of(context).pop('no_image');
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == null) {
+      if (kDebugMode) {
+        print('Usuário cancelou a seleção de imagem');
+      }
+      return;
+    }
+
+    if (choice == 'no_image') {
+      if (kDebugMode) {
+        print('Usuário escolheu adicionar favorito sem imagem');
+      }
+      _addFavorite(); // Adiciona sem imagem
+      return;
+    }
+
+    // Converter a escolha para ImageSource
+    final ImageSource source = choice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+
+    try {
+      if (kDebugMode) {
+        print('Iniciando seleção de imagem da ${source == ImageSource.camera ? 'câmera' : 'galeria'}');
+      }
+
+      final pickedImage = await _imageService.pickImage(source);
+      if (pickedImage != null) {
+        if (kDebugMode) {
+          print('Imagem selecionada: ${pickedImage.path}');
+          print('Iniciando processo de salvamento...');
+        }
+
+        final savedImagePath = await _imageService.saveImage(pickedImage);
+        if (savedImagePath != null) {
+          if (kDebugMode) {
+            print('Imagem salva com sucesso! Caminho final: $savedImagePath');
+            print('Adicionando favorito com imagem...');
+          }
+          _addFavorite(imagePath: savedImagePath);
+        } else {
+          if (kDebugMode) {
+            print('ERRO: Falha ao salvar imagem! Salvando favorito sem imagem.');
+          }
+          _addFavorite();
+        }
+      } else {
+        if (kDebugMode) {
+          print('ERRO: Nenhuma imagem foi selecionada pelo usuário');
+        }
+        _addFavorite();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Erro durante o processo de seleção/salvamento: $e');
+      }
+      // Adiciona o favorito mesmo se houve erro com a imagem
+      _addFavorite();
+    }
+  }
+
+  void _addFavorite({String? imagePath}) async {
+    if (kDebugMode) {
+      print('=== CRIANDO FAVORITO ===');
+      print('Nome: ${productName.trim()}');
+      print('Imagem: ${imagePath ?? "sem imagem"}');
+    }
+
+    final price = double.tryParse(
+      productPrice.replaceAll(',', '.').replaceAll('€', '').trim(),
+    ) ?? 0.0;
+    
+    final favoriteItem = FavoriteItem(
+      name: productName.trim(),
+      defaultPrice: price,
+      defaultQuantity: selectedQuantity,
+      imagePath: imagePath,
+    );
+    
+    if (kDebugMode) {
+      print('Item criado - ID: ${favoriteItem.id}, ImagePath: ${favoriteItem.imagePath}');
+    }
+    
+    await FavoriteItemsService.addFavoriteItem(favoriteItem);
+    
+    if (kDebugMode) {
+      print('Item salvo no serviço!');
+    }
+    
+    if (mounted) {
+      setState(() => _isFavorite = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${productName.trim()} adicionado aos favoritos'),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
     }
   }
 
@@ -88,27 +232,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
       }
     } else {
       // Adicionar aos favoritos
-      final price = double.tryParse(
-        productPrice.replaceAll(',', '.').replaceAll('€', '').trim(),
-      ) ?? 0.0;
-      
-      final favoriteItem = FavoriteItemsService.createFavoriteFromItem(
-        productName.trim(),
-        price,
-        selectedQuantity,
-      );
-      
-      await FavoriteItemsService.addFavoriteItem(favoriteItem);
-      setState(() => _isFavorite = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${productName.trim()} adicionado aos favoritos'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+      await _pickAndSaveImage();
     }
   }
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;

@@ -1,6 +1,7 @@
 class FavoriteItem {
   String id;
   String name;
+  String? imagePath; // Caminho para a imagem do item
   double defaultPrice;
   int defaultQuantity;
   int usageCount; // Contador de quantas vezes foi usado
@@ -10,6 +11,7 @@ class FavoriteItem {
   FavoriteItem({
     String? id,
     required this.name,
+    this.imagePath,
     this.defaultPrice = 0.0,
     this.defaultQuantity = 1,
     this.usageCount = 0,
@@ -38,6 +40,7 @@ class FavoriteItem {
     return {
       'id': id,
       'name': name,
+      'imagePath': imagePath,
       'defaultPrice': defaultPrice,
       'defaultQuantity': defaultQuantity,
       'usageCount': usageCount,
@@ -51,6 +54,7 @@ class FavoriteItem {
     return FavoriteItem(
       id: map['id'],
       name: map['name'] ?? '',
+      imagePath: map['imagePath'],
       defaultPrice: map['defaultPrice']?.toDouble() ?? 0.0,
       defaultQuantity: map['defaultQuantity']?.toInt() ?? 1,
       usageCount: map['usageCount']?.toInt() ?? 0,
