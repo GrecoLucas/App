@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/scanned_item.dart';
 import '../services/barcode_service.dart';
+import '../services/product_api_service.dart';
 import '../utils/app_theme.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -45,22 +46,30 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     print('Código escaneado: $scannedBarcode');
     
     try {
-      // Buscar produto no banco local
+      // Primeiro verificar se já existe no banco local
       final existingItem = await BarcodeService.findItemByBarcode(scannedBarcode);
       
       if (existingItem != null) {
-        // Produto encontrado - mostrar dialog de confirmação/edição
+        // Produto encontrado no banco local - mostrar dialog de confirmação/edição
         _showExistingItemDialog(existingItem);
+        return;
+      }
+      
+      // Não existe no banco local - tentar buscar nas APIs
+      print('Buscando produto nas APIs...');
+      final productInfo = await ProductApiService.getProductInfo(scannedBarcode);
+      
+      if (productInfo != null) {
+        // Produto encontrado na API - mostrar dialog com dados preenchidos
+        _showNewItemDialog(scannedBarcode, suggestedName: productInfo.name);
       } else {
-        // Produto não encontrado - mostrar dialog para inserir dados
+        // Produto não encontrado em nenhuma API - mostrar dialog vazio
         _showNewItemDialog(scannedBarcode);
       }
     } catch (e) {
       print('Erro ao processar código de barras: $e');
-      setState(() {
-        isScanning = true;
-        isProcessing = false;
-      });
+      // Em caso de erro, mostrar dialog vazio
+      _showNewItemDialog(scannedBarcode);
     }
   }
 
@@ -90,12 +99,13 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  void _showNewItemDialog(String barcode) {
+  void _showNewItemDialog(String barcode, {String? suggestedName}) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => _NewItemDialog(
         barcode: barcode,
+        suggestedName: suggestedName,
         onSave: (newItem) async {
           print('Salvando novo item: ${newItem.name}');
           // Salva o novo item no banco local
@@ -347,11 +357,13 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
 
 class _NewItemDialog extends StatefulWidget {
   final String barcode;
+  final String? suggestedName;
   final Function(ScannedItem) onSave;
   final VoidCallback onCancel;
 
   const _NewItemDialog({
     required this.barcode,
+    this.suggestedName,
     required this.onSave,
     required this.onCancel,
   });
@@ -368,7 +380,7 @@ class _NewItemDialogState extends State<_NewItemDialog> {
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController();
+    nameController = TextEditingController(text: widget.suggestedName ?? '');
     priceController = TextEditingController();
   }
 
@@ -431,6 +443,34 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                 ],
               ),
             ),
+            // Mostrar informação se o nome foi encontrado automaticamente
+            if (widget.suggestedName != null) ...[
+              const SizedBox(height: AppConstants.paddingMedium),
+              Container(
+                padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGreen,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      color: AppTheme.primaryGreen,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Nome encontrado automaticamente! Você pode editá-lo se necessário.',
+                        style: AppStyles.bodyMedium.copyWith(
+                          color: AppTheme.darkGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: AppConstants.paddingLarge),
             TextField(
               controller: nameController,
@@ -442,7 +482,7 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                 filled: true,
                 fillColor: AppTheme.softGrey,
               ),
-              autofocus: true,
+              autofocus: widget.suggestedName == null, // Só foca se não tem nome sugerido
             ),
             const SizedBox(height: AppConstants.paddingMedium),
             TextField(
