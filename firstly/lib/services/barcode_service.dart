@@ -52,6 +52,36 @@ class BarcodeService {
     }
   }
 
+  /// Retorna todos os itens escaneados salvos (método público)
+  static Future<List<ScannedItem>> getAllScannedItems() async {
+    return await _loadScannedItemsDatabase();
+  }
+
+  /// Remove um item específico do banco local
+  static Future<void> removeScannedItem(String itemId) async {
+    try {
+      final existingItems = await _loadScannedItemsDatabase();
+      existingItems.removeWhere((item) => item.id == itemId);
+      
+      final prefs = await SharedPreferences.getInstance();
+      final itemsJson = existingItems.map((item) => item.toMap()).toList();
+      final jsonString = jsonEncode(itemsJson);
+      await prefs.setString(_scannedItemsKey, jsonString);
+    } catch (e) {
+      print('Erro ao remover item escaneado: $e');
+    }
+  }
+
+  /// Remove todos os itens escaneados
+  static Future<void> clearAllScannedItems() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_scannedItemsKey);
+    } catch (e) {
+      print('Erro ao limpar itens escaneados: $e');
+    }
+  }
+
   /// Busca um item pelo código de barras no banco local
   static Future<ScannedItem?> findItemByBarcode(String barcode) async {
     try {

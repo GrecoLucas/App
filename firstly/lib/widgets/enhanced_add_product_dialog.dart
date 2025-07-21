@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../services/image_service.dart';
 import '../utils/app_theme.dart';
+import '../providers/app_settings_provider.dart';
 
 class AddProductDialog extends StatefulWidget {
   final String? initialName;
@@ -170,7 +172,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
     }
 
     final price = double.tryParse(
-      productPrice.replaceAll(',', '.').replaceAll('€', '').trim(),
+      productPrice.replaceAll(',', '.').replaceAll(RegExp(r'[€$R\$\s]'), '').trim(),
     ) ?? 0.0;
     
     final favoriteItem = FavoriteItem(
@@ -314,37 +316,41 @@ class _AddProductDialogState extends State<AddProductDialog> {
             SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
             
             // Campo preço
-            TextField(
-              controller: priceController,
-              onChanged: (value) => productPrice = value,
-              decoration: InputDecoration(
-                labelText: 'Preço (opcional)',
-                labelStyle: TextStyle(
-                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                prefixText: '€ ',
-                hintText: '0,00',
-                hintStyle: TextStyle(
-                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
-                ),
-                prefixIcon: Icon(
-                  Icons.euro,
-                  size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                  vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                ),
-              ),
-              style: TextStyle(
-                fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            Consumer<AppSettingsProvider>(
+              builder: (context, settingsProvider, child) {
+                return TextField(
+                  controller: priceController,
+                  onChanged: (value) => productPrice = value,
+                  decoration: InputDecoration(
+                    labelText: 'Preço (opcional)',
+                    labelStyle: TextStyle(
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                    ),
+                    prefixText: '${settingsProvider.primaryCurrency.symbol} ',
+                    hintText: '0,00',
+                    hintStyle: TextStyle(
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.attach_money,
+                      size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.softGrey,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                    ),
+                  ),
+                  style: TextStyle(
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                );
+              },
             ),
             SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
             
@@ -423,7 +429,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
               // Se o preço foi fornecido, tenta fazer o parse
               if (productPrice.trim().isNotEmpty) {
                 final parsedPrice = double.tryParse(
-                  productPrice.replaceAll(',', '.').replaceAll('€', '').trim(),
+                  productPrice.replaceAll(',', '.').replaceAll(RegExp(r'[€$R\$\s]'), '').trim(),
                 );
                 if (parsedPrice != null && parsedPrice >= 0) {
                   price = parsedPrice;

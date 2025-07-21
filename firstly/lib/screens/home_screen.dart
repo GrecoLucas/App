@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/list.dart';
 import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
+import '../providers/app_settings_provider.dart';
 import 'shopping_list_detail_screen.dart';
 import 'favorite_items_screen.dart';
-import 'expense_lists_screen.dart';
+import 'settings_screen.dart';
 
 enum ListSortCriteria {
   nameAscending,
@@ -140,19 +142,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       controller: TextEditingController(text: listName),
                     ),
                     const SizedBox(height: AppConstants.paddingMedium),
-                    TextField(
-                      onChanged: (value) => budgetText = value,
-                      decoration: InputDecoration(
-                        labelText: 'Orçamento (opcional)',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                        ),
-                        hintText: 'Ex: 50.00',
-                        prefixIcon: const Icon(Icons.euro),
-                        filled: true,
-                        fillColor: AppTheme.softGrey,
-                      ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    Consumer<AppSettingsProvider>(
+                      builder: (context, settingsProvider, child) {
+                        return TextField(
+                          onChanged: (value) => budgetText = value,
+                          decoration: InputDecoration(
+                            labelText: 'Orçamento (opcional)',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                            ),
+                            hintText: 'Ex: 50.00',
+                            prefixIcon: Icon(Icons.attach_money),
+                            prefixText: '${settingsProvider.primaryCurrency.symbol} ',
+                            filled: true,
+                            fillColor: AppTheme.softGrey,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        );
+                      },
                     ),
                     // Mostrar opção de cópia apenas quando não estamos já copiando uma lista específica
                     if (originalList == null && shoppingLists.isNotEmpty) ...[
@@ -421,6 +428,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SettingsScreen(),
+            ),
+          );
+        },
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.settings),
+        tooltip: 'Configurações',
+      ),
     );
   }
 
@@ -434,7 +455,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildNavigationButton(
             icon: Icons.add_shopping_cart,
             title: 'Nova Lista de Compras',
-            subtitle: 'Organize suas compras com orçamento',
+            subtitle: 'Organize suas compras com scanner QR e orçamento',
             gradient: AppTheme.primaryGradient,
             onTap: _addNewList,
           ),
@@ -455,27 +476,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const FavoriteItemsScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: AppConstants.paddingMedium),
-          
-          // Botão Listas de Gastos
-          _buildNavigationButton(
-            icon: Icons.qr_code_scanner,
-            title: 'Listas de Gastos',
-            subtitle: 'Escaneie códigos e controle gastos',
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2196F3), Color(0xFF64B5F6)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ExpenseListsScreen(),
                 ),
               );
             },
@@ -540,11 +540,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white.withOpacity(0.8),
-                  size: AppConstants.iconMedium,
                 ),
               ],
             ),
@@ -730,15 +725,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             style: AppStyles.captionGrey,
                           ),
                           const SizedBox(width: AppConstants.paddingMedium),
-                          Icon(
-                            Icons.euro,
-                            size: AppConstants.iconSmall,
-                            color: AppTheme.primaryGreen,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${list.totalPrice.toStringAsFixed(2)}',
-                            style: AppStyles.priceStyle,
+                          Consumer<AppSettingsProvider>(
+                            builder: (context, settingsProvider, child) {
+                              return Flexible(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.attach_money,
+                                      size: AppConstants.iconSmall,
+                                      color: AppTheme.primaryGreen,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        '${settingsProvider.primaryCurrency.symbol}${list.totalPrice.toStringAsFixed(2)}',
+                                        style: AppStyles.captionGrey.copyWith(
+                                          color: AppTheme.primaryGreen,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -768,14 +780,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              list.isBudgetExceeded 
-                                  ? '€${list.remainingBudget.abs().toStringAsFixed(2)} acima'
-                                  : '€${list.remainingBudget.toStringAsFixed(2)} restante',
-                              style: AppStyles.captionGrey.copyWith(
-                                color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Consumer<AppSettingsProvider>(
+                              builder: (context, settingsProvider, child) {
+                                final remainingBudget = list.remainingBudget;
+                                final displayText = list.isBudgetExceeded 
+                                    ? '${settingsProvider.primaryCurrency.symbol}${remainingBudget.abs().toStringAsFixed(2)} acima'
+                                    : '${settingsProvider.primaryCurrency.symbol}${remainingBudget.toStringAsFixed(2)} restante';
+                                
+                                return Expanded(
+                                  child: Text(
+                                    displayText,
+                                    style: AppStyles.captionGrey.copyWith(
+                                      color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(width: AppConstants.paddingSmall),
                           ],
@@ -835,11 +858,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      size: AppConstants.iconSmall,
-                      color: AppTheme.textGrey,
-                    ),
                   ],
                 ),
               ],

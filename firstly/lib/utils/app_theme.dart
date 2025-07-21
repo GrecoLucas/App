@@ -51,7 +51,7 @@ class AppTheme {
       ),
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         elevation: 6,
-        backgroundColor: primaryGreen,
+        backgroundColor: Color.fromARGB(255, 76, 102, 175),
         foregroundColor: Colors.white,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

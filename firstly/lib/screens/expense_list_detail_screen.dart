@@ -341,7 +341,7 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
           const SizedBox(height: AppConstants.paddingMedium),
           FloatingActionButton.extended(
             onPressed: _scanBarcode,
-            backgroundColor: AppTheme.primaryGreen,
+            backgroundColor: const Color.fromARGB(255, 61, 109, 164),
             foregroundColor: Colors.white,
             icon: const Icon(Icons.qr_code_scanner),
             label: const Text('Escanear'),

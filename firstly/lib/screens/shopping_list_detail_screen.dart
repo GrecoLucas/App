@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../models/list.dart';
 import '../models/item.dart';
+import '../models/scanned_item.dart';
 import '../utils/app_theme.dart';
 import '../widgets/enhanced_add_product_dialog.dart';
 import '../widgets/enhanced_product_card.dart';
 import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
+import '../providers/app_settings_provider.dart';
+import 'barcode_scanner_screen.dart';
 
 class ShoppingListDetailScreen extends StatefulWidget {
   final ShoppingList shoppingList;
@@ -178,6 +182,36 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         },
       ),
     );
+  }
+
+  // Adiciona produto via scanner de código de barras
+  void _addProductViaScanner() async {
+    final scannedItem = await Navigator.push<ScannedItem>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const BarcodeScannerScreen(),
+      ),
+    );
+
+    if (scannedItem != null) {
+      setState(() {
+        widget.shoppingList.addItem(
+          Item(
+            name: scannedItem.name,
+            price: scannedItem.price,
+            quantity: scannedItem.quantity,
+          ),
+        );
+      });
+      widget.onUpdate();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${scannedItem.name} adicionado via scanner'),
+          backgroundColor: AppTheme.primaryGreen,
+        ),
+      );
+    }
   }
 
   Widget _buildBudgetProgress() {
@@ -360,25 +394,63 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}',
-                      style: AppStyles.headingLarge.copyWith(
-                        color: AppTheme.primaryGreen,
-                      ),
+                    Consumer<AppSettingsProvider>(
+                      builder: (context, settingsProvider, child) {
+                        return FutureBuilder<String>(
+                          future: settingsProvider.formatPriceWithConversion(widget.shoppingList.totalPrice),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              return Text(
+                                snapshot.data!,
+                                style: AppStyles.headingLarge.copyWith(
+                                  color: AppTheme.primaryGreen,
+                                ),
+                              );
+                            }
+                            return Text(
+                              '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}',
+                              style: AppStyles.headingLarge.copyWith(
+                                color: AppTheme.primaryGreen,
+                              ),
+                            );
+                          },
+                        );
+                      },
                     ),
                     // Mostrar progresso do orçamento se definido
                     if (widget.shoppingList.budget != null) ...[
                       const SizedBox(height: AppConstants.paddingSmall),
-                      Text(
-                        widget.shoppingList.isBudgetExceeded
-                            ? '€${widget.shoppingList.remainingBudget.abs().toStringAsFixed(2)} acima do orçamento'
-                            : '€${widget.shoppingList.remainingBudget.toStringAsFixed(2)} restante',
-                        style: AppStyles.captionGrey.copyWith(
-                          color: widget.shoppingList.isBudgetExceeded
-                              ? AppTheme.warningRed
-                              : AppTheme.darkGreen,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      Consumer<AppSettingsProvider>(
+                        builder: (context, settingsProvider, child) {
+                          final remainingBudget = widget.shoppingList.remainingBudget;
+                          final isBudgetExceeded = widget.shoppingList.isBudgetExceeded;
+                          
+                          return FutureBuilder<String>(
+                            future: settingsProvider.formatPriceWithConversion(remainingBudget.abs()),
+                            builder: (context, snapshot) {
+                              String displayText;
+                              if (snapshot.hasData) {
+                                displayText = isBudgetExceeded 
+                                    ? '${snapshot.data} acima do orçamento'
+                                    : '${snapshot.data} restante';
+                              } else {
+                                displayText = isBudgetExceeded
+                                    ? '€${remainingBudget.abs().toStringAsFixed(2)} acima do orçamento'
+                                    : '€${remainingBudget.toStringAsFixed(2)} restante';
+                              }
+                              
+                              return Text(
+                                displayText,
+                                style: AppStyles.captionGrey.copyWith(
+                                  color: isBudgetExceeded
+                                      ? AppTheme.warningRed
+                                      : AppTheme.darkGreen,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              );
+                            },
+                          );
+                        },
                       ),
                     ],
                   ],
@@ -441,7 +513,24 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                     label: const Text('Favoritos'),
                   ),
                 ),
-                const SizedBox(width: AppConstants.paddingMedium),
+                const SizedBox(width: AppConstants.paddingSmall),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _addProductViaScanner,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2196F3),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.qr_code_scanner, size: 18),
+                    label: const Text('Scanner'),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingSmall),
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _addProduct,
