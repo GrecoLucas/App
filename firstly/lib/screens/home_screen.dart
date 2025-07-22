@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../models/list.dart';
 import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
+import '../services/list_sharing_service.dart';
 import '../widgets/list_sort_options_widget.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/auth_provider.dart';
 import 'shopping_list_detail_screen.dart';
 import 'favorite_items_screen.dart';
 import 'settings_screen.dart';
@@ -32,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _animationController;
   bool _isLoading = true;
   ListSortCriteria _currentListSortCriteria = ListSortCriteria.dateNewest;
+  Timer? _pollingTimer;
+  static const Duration _pollingInterval = Duration(seconds: 10); // Atualizar a cada 10 segundos
 
   @override
   void initState() {
@@ -41,22 +46,119 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     _loadShoppingLists();
+    _startPolling();
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
-  // Carrega as listas salvas do armazenamento local
+  // Inicia o polling para atualizar as listas automaticamente
+  void _startPolling() {
+    // Desabilitar polling temporariamente para evitar conflitos
+    // _pollingTimer = Timer.periodic(_pollingInterval, (timer) {
+    //   _refreshListsFromSupabase();
+    // });
+  }
+
+  // Atualiza as listas do Supabase sem mostrar loading
+  Future<void> _refreshListsFromSupabase() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Só fazer polling se estiver logado
+      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
+        final supabaseLists = await ListSharingService.loadUserLists(
+          authProvider.currentUser!['id'].toString(),
+        );
+        
+        // Só atualizar se as listas mudaram
+        if (mounted && _hasListsChanged(supabaseLists)) {
+          setState(() {
+            shoppingLists = supabaseLists;
+          });
+          await _saveShoppingLists();
+        }
+      }
+    } catch (e) {
+      // Falhar silenciosamente durante o polling
+      print('Erro no polling: $e');
+    }
+  }
+
+  // Verifica se as listas mudaram
+  bool _hasListsChanged(List<ShoppingList> newLists) {
+    if (newLists.length != shoppingLists.length) return true;
+    
+    for (int i = 0; i < newLists.length; i++) {
+      final newList = newLists[i];
+      final oldList = shoppingLists[i];
+      
+      if (newList.name != oldList.name ||
+          newList.items.length != oldList.items.length ||
+          newList.isShared != oldList.isShared) {
+        return true;
+      }
+      
+      // Verificar se os itens mudaram
+      for (int j = 0; j < newList.items.length; j++) {
+        if (j >= oldList.items.length) return true;
+        
+        final newItem = newList.items[j];
+        final oldItem = oldList.items[j];
+        
+        if (newItem.name != oldItem.name ||
+            newItem.price != oldItem.price ||
+            newItem.quantity != oldItem.quantity ||
+            newItem.isCompleted != oldItem.isCompleted) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  // Função para o pull-to-refresh
+  Future<void> _handleRefresh() async {
+    await _refreshListsFromSupabase();
+  }
+
+  // Carrega as listas salvas do armazenamento local e do Supabase
   Future<void> _loadShoppingLists() async {
     try {
-      final loadedLists = await StorageService.loadShoppingLists();
-      setState(() {
-        shoppingLists = loadedLists;
-        _isLoading = false;
-      });
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Se estiver logado, carregar do Supabase
+      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
+        try {
+          final supabaseLists = await ListSharingService.loadUserLists(
+            authProvider.currentUser!['id'].toString(),
+          );
+          setState(() {
+            shoppingLists = supabaseLists;
+            _isLoading = false;
+          });
+        } catch (e) {
+          // Se der erro no Supabase, carregar localmente
+          final loadedLists = await StorageService.loadShoppingLists();
+          setState(() {
+            shoppingLists = loadedLists;
+            _isLoading = false;
+          });
+        }
+      } else {
+        // Se não estiver logado, carregar apenas localmente
+        final loadedLists = await StorageService.loadShoppingLists();
+        setState(() {
+          shoppingLists = loadedLists;
+          _isLoading = false;
+        });
+      }
+      
       // Aplica a ordenação padrão
       _sortLists(_currentListSortCriteria);
     } catch (e) {
@@ -263,10 +365,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         );
                       }
                       
-                      setState(() {
-                        shoppingLists.add(newList);
-                      });
-                      await _saveShoppingLists();
+                      // Se estiver logado, salvar direto no Supabase
+                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
+                        try {
+                          print('Tentando salvar lista no Supabase...');
+                          print('User ID: ${authProvider.currentUser!['id']}');
+                          print('Lista: ${newList.name}');
+                          
+                          final savedList = await ListSharingService.saveListToSupabase(
+                            newList,
+                            authProvider.currentUser!['id'].toString(),
+                          );
+                          
+                          print('Lista salva com sucesso! ID: ${savedList.id}');
+                          
+                          // Atualizar a lista local com os dados do Supabase
+                          newList.id = savedList.id;
+                          newList.ownerId = savedList.ownerId;
+                          newList.createdAt = savedList.createdAt;
+                          
+                          setState(() {
+                            shoppingLists.add(newList);
+                          });
+                          
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Lista "${newList.name}" criada com sucesso!'),
+                              backgroundColor: AppTheme.primaryGreen,
+                            ),
+                          );
+                        } catch (error) {
+                          print('Erro ao salvar lista: $error');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Erro ao criar lista: $error'),
+                              backgroundColor: AppTheme.warningRed,
+                            ),
+                          );
+                          return;
+                        }
+                      } else {
+                        print('Usuário não logado, salvando localmente');
+                        // Se não estiver logado, salvar apenas localmente
+                        setState(() {
+                          shoppingLists.add(newList);
+                        });
+                        await _saveShoppingLists();
+                      }
+                      
                       _animationController.forward();
                       Navigator.pop(context);
                     }
@@ -286,7 +433,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   // Remove uma lista de compras
-  void _deleteList(int index) {
+  void _deleteList(int index) async {
+    final list = shoppingLists[index];
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final currentUserId = authProvider.currentUser?['id']?.toString();
+    
+    if (currentUserId == null) return;
+
+    bool isOwner = false;
+    String actionText = 'sair da lista compartilhada';
+    String confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
+    
+    // Verificar se é o dono da lista
+    if (list.isShared && list.id != null) {
+      try {
+        isOwner = await ListSharingService.isListOwner(list.id!, currentUserId);
+        if (isOwner) {
+          actionText = 'excluir a lista';
+          confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação irá remover a lista para todos os usuários e não pode ser desfeita.';
+        }
+      } catch (error) {
+        // Em caso de erro, assumir que não é o dono
+        isOwner = false;
+      }
+    } else {
+      // Lista local, sempre pode excluir
+      isOwner = true;
+      actionText = 'excluir a lista';
+      confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação não pode ser desfeita.';
+    }
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -302,17 +478,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   color: AppTheme.warningRed.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 ),
-                child: const Icon(
-                  Icons.delete_outline,
+                child: Icon(
+                  isOwner ? Icons.delete_outline : Icons.exit_to_app,
                   color: AppTheme.warningRed,
                 ),
               ),
               const SizedBox(width: AppConstants.paddingMedium),
-              const Text('Excluir Lista'),
+              Text(isOwner ? 'Excluir Lista' : 'Sair da Lista'),
             ],
           ),
           content: Text(
-            'Tem certeza que deseja excluir a lista "${shoppingLists[index].name}"? Esta ação não pode ser desfeita.',
+            confirmText,
             style: AppStyles.bodyMedium,
           ),
           actions: [
@@ -322,17 +498,46 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
             ElevatedButton(
               onPressed: () async {
-                setState(() {
-                  shoppingLists.removeAt(index);
-                });
-                await _saveShoppingLists();
-                Navigator.pop(context);
+                try {
+                  if (list.isShared && list.id != null) {
+                    if (isOwner) {
+                      // Dono da lista: deletar completamente
+                      await ListSharingService.deleteList(list.id!, currentUserId);
+                    } else {
+                      // Convidado: apenas sair da lista compartilhada
+                      await ListSharingService.leaveSharedList(list.id!, currentUserId);
+                    }
+                  }
+                  
+                  // Remover da lista local
+                  setState(() {
+                    shoppingLists.removeAt(index);
+                  });
+                  await _saveShoppingLists();
+                  
+                  Navigator.pop(context);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isOwner ? 'Lista excluída com sucesso' : 'Você saiu da lista compartilhada'),
+                      backgroundColor: AppTheme.primaryGreen,
+                    ),
+                  );
+                } catch (error) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao ${actionText}: $error'),
+                      backgroundColor: AppTheme.warningRed,
+                    ),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.warningRed,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Excluir'),
+              child: Text(isOwner ? 'Excluir' : 'Sair'),
             ),
           ],
         );
@@ -406,6 +611,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               onSortChanged: _sortLists,
             ),
           const SizedBox(width: AppConstants.paddingSmall),
+          // Botão de logout
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.person),
+                onSelected: (value) {
+                  if (value == 'logout') {
+                    _showLogoutDialog(authProvider);
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'user_info',
+                    enabled: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Usuário:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        Text(
+                          authProvider.currentUser?['Username'] ?? 'Usuário',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 18),
+                        SizedBox(width: 8),
+                        Text('Sair'),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: AppConstants.paddingSmall),
         ],
         backgroundColor: Colors.white,
         elevation: 0,
@@ -422,9 +676,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
                     ),
                   )
-                : shoppingLists.isEmpty
-                    ? _buildEmptyState()
-                    : _buildShoppingLists(),
+                : RefreshIndicator(
+                    onRefresh: _handleRefresh,
+                    color: AppTheme.primaryGreen,
+                    child: shoppingLists.isEmpty
+                        ? _buildEmptyState()
+                        : _buildShoppingLists(),
+                  ),
           ),
         ],
       ),
@@ -550,52 +808,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingLarge),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
-                boxShadow: const [AppStyles.softShadow],
-              ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                    padding: const EdgeInsets.all(AppConstants.paddingXLarge),
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-                    ),
-                    child: const Icon(
-                      Icons.shopping_cart_outlined,
-                      size: AppConstants.iconXLarge,
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+                      boxShadow: const [AppStyles.softShadow],
                     ),
-                  ),
-                  const SizedBox(height: AppConstants.paddingLarge),
-                  Text(
-                    'Nenhuma lista criada ainda',
-                    style: AppStyles.headingMedium.copyWith(
-                      color: AppTheme.primaryGreen,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                          ),
+                          child: const Icon(
+                            Icons.shopping_cart_outlined,
+                            size: AppConstants.iconXLarge,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: AppConstants.paddingLarge),
+                        Text(
+                          'Nenhuma lista criada ainda',
+                          style: AppStyles.headingMedium.copyWith(
+                            color: AppTheme.primaryGreen,
+                          ),
+                        ),
+                        const SizedBox(height: AppConstants.paddingSmall),
+                        const Text(
+                          'Toque em "Nova Lista de Compras" acima para começar a organizar suas compras!\n\nPuxe para baixo para atualizar.',
+                          style: AppStyles.bodyMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: AppConstants.paddingSmall),
-                  const Text(
-                    'Toque em "Nova Lista de Compras" acima para começar a organizar suas compras!',
-                    style: AppStyles.bodyMedium,
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -694,10 +960,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     gradient: AppTheme.primaryGradient,
                     borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
                   ),
-                  child: const Icon(
-                    Icons.shopping_basket,
-                    color: Colors.white,
-                    size: AppConstants.iconMedium,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.shopping_basket,
+                        color: Colors.white,
+                        size: AppConstants.iconMedium,
+                      ),
+                      // Contador de pessoas com acesso (apenas para listas com ID)
+                      if (list.id != null)
+                        FutureBuilder<int>(
+                          future: ListSharingService.getListAccessCount(list.id!),
+                          builder: (context, snapshot) {
+                            final accessCount = snapshot.data ?? 1;
+                            if (accessCount > 1) {
+                              return Container(
+                                margin: const EdgeInsets.only(top: 2),
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$accessCount',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: AppConstants.paddingLarge),
@@ -864,6 +1162,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // Exibe diálogo de confirmação para logout
+  void _showLogoutDialog(AuthProvider authProvider) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sair da conta'),
+        content: Text(
+          'Tem certeza que deseja sair da conta "${authProvider.currentUser?['Username']}"?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await authProvider.signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Sair'),
+          ),
+        ],
       ),
     );
   }

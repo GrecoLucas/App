@@ -9,7 +9,9 @@ import '../widgets/enhanced_product_card.dart';
 import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
+import '../services/list_sharing_service.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/auth_provider.dart';
 import 'barcode_scanner_screen.dart';
 
 class ShoppingListDetailScreen extends StatefulWidget {
@@ -58,15 +60,43 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
     
     if (result != null) {
+      final newItem = Item(
+        name: result['name'], 
+        price: result['price'],
+        quantity: result['quantity'] ?? 1,
+      );
+      
       setState(() {
-        widget.shoppingList.addItem(
-          Item(
-            name: result['name'], 
-            price: result['price'],
-            quantity: result['quantity'] ?? 1,
-          ),
-        );
+        widget.shoppingList.addItem(newItem);
       });
+      
+      // Se a lista tem ID do Supabase, sincronizar
+      if (widget.shoppingList.id != null) {
+        try {
+          print('Adicionando item ao Supabase - Lista ID: ${widget.shoppingList.id}');
+          print('Item: ${newItem.name}');
+          
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          await ListSharingService.addItemToList(
+            widget.shoppingList.id!,
+            newItem,
+            addedByUserId: authProvider.currentUser?['id']?.toString(),
+          );
+          
+          print('Item adicionado com sucesso no Supabase');
+        } catch (error) {
+          print('Erro ao sincronizar item: $error');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erro ao sincronizar item: $error'),
+                backgroundColor: AppTheme.warningRed,
+              ),
+            );
+          }
+        }
+      }
+      
       widget.onUpdate();
     }
   }
@@ -93,6 +123,27 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           result['quantity'] ?? 1,
         );
       });
+      
+      // Se a lista tem ID do Supabase, sincronizar
+      if (widget.shoppingList.id != null && item.supabaseId != null) {
+        try {
+          await ListSharingService.updateItemInList(
+            widget.shoppingList.id!,
+            item.supabaseId!,
+            item,
+          );
+        } catch (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erro ao sincronizar edição: $error'),
+                backgroundColor: AppTheme.warningRed,
+              ),
+            );
+          }
+        }
+      }
+      
       widget.onUpdate();
     }
   }
@@ -133,10 +184,32 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                final item = widget.shoppingList.items[index];
+                
                 setState(() {
                   widget.shoppingList.removeItem(index);
                 });
+                
+                // Se a lista tem ID do Supabase, sincronizar
+                if (widget.shoppingList.id != null && item.supabaseId != null) {
+                  try {
+                    await ListSharingService.removeItemFromList(
+                      widget.shoppingList.id!,
+                      item.supabaseId!,
+                    );
+                  } catch (error) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Erro ao sincronizar remoção: $error'),
+                          backgroundColor: AppTheme.warningRed,
+                        ),
+                      );
+                    }
+                  }
+                }
+                
                 widget.onUpdate();
                 Navigator.pop(context);
               },
@@ -157,8 +230,10 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => QuickAddFavoritesDialog(
-        onItemsSelected: (items) {
+        onItemsSelected: (items) async {
           print('Recebidos ${items.length} itens favoritos: $items');
+          List<Item> newItems = [];
+          
           // Esta função será chamada quando os itens forem selecionados
           setState(() {
             for (final itemData in items) {
@@ -169,8 +244,33 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               );
               print('Adicionando item: ${newItem.name}, preço: ${newItem.price}, quantidade: ${newItem.quantity}');
               widget.shoppingList.addItem(newItem);
+              newItems.add(newItem);
             }
           });
+          
+          // Se a lista tem ID do Supabase, sincronizar
+          if (widget.shoppingList.id != null) {
+            try {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              for (final item in newItems) {
+                await ListSharingService.addItemToList(
+                  widget.shoppingList.id!,
+                  item,
+                  addedByUserId: authProvider.currentUser?['id']?.toString(),
+                );
+              }
+            } catch (error) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Erro ao sincronizar favoritos: $error'),
+                    backgroundColor: AppTheme.warningRed,
+                  ),
+                );
+              }
+            }
+          }
+          
           widget.onUpdate();
           
           ScaffoldMessenger.of(context).showSnackBar(
@@ -194,15 +294,37 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
 
     if (scannedItem != null) {
+      final newItem = Item(
+        name: scannedItem.name,
+        price: scannedItem.price,
+        quantity: scannedItem.quantity,
+      );
+      
       setState(() {
-        widget.shoppingList.addItem(
-          Item(
-            name: scannedItem.name,
-            price: scannedItem.price,
-            quantity: scannedItem.quantity,
-          ),
-        );
+        widget.shoppingList.addItem(newItem);
       });
+      
+      // Se a lista tem ID do Supabase, sincronizar
+      if (widget.shoppingList.id != null) {
+        try {
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          await ListSharingService.addItemToList(
+            widget.shoppingList.id!,
+            newItem,
+            addedByUserId: authProvider.currentUser?['id']?.toString(),
+          );
+        } catch (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Erro ao sincronizar item escaneado: $error'),
+                backgroundColor: AppTheme.warningRed,
+              ),
+            );
+          }
+        }
+      }
+      
       widget.onUpdate();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -495,6 +617,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             ],
             // Botões de ação fixos
             const SizedBox(height: AppConstants.paddingLarge),
+            // Primeira linha de botões
             Row(
               children: [
                 Expanded(
@@ -530,7 +653,13 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                     label: const Text('Scanner'),
                   ),
                 ),
-                const SizedBox(width: AppConstants.paddingSmall),
+              ],
+            ),
+            const SizedBox(height: AppConstants.paddingSmall),
+            
+            // Segunda linha de botões
+            Row(
+              children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: _addProduct,
@@ -545,6 +674,23 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                     ),
                     icon: const Icon(Icons.add, size: 18),
                     label: const Text('Adicionar'),
+                  ),
+                ),
+                const SizedBox(width: AppConstants.paddingSmall),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _shareList,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF9C27B0),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.share, size: 18),
+                    label: const Text('Compartilhar'),
                   ),
                 ),
               ],
@@ -627,6 +773,277 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           );
         },
       ),
+    );
+  }
+
+  // Função para compartilhar a lista
+  void _shareList() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    if (authProvider.currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Você precisa estar logado para compartilhar listas'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => _ShareListDialog(
+        shoppingList: widget.shoppingList,
+        currentUserId: authProvider.currentUser!['id'].toString(),
+        onListShared: () {
+          widget.onUpdate(); // Atualizar a tela principal
+          setState(() {}); // Atualizar a tela atual
+        },
+      ),
+    );
+  }
+}
+
+// Widget do diálogo de compartilhamento
+class _ShareListDialog extends StatefulWidget {
+  final ShoppingList shoppingList;
+  final String currentUserId;
+  final VoidCallback onListShared;
+
+  const _ShareListDialog({
+    required this.shoppingList,
+    required this.currentUserId,
+    required this.onListShared,
+  });
+
+  @override
+  State<_ShareListDialog> createState() => _ShareListDialogState();
+}
+
+class _ShareListDialogState extends State<_ShareListDialog> {
+  final TextEditingController _usernameController = TextEditingController();
+  bool _isLoading = false;
+  List<String> _collaborators = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCollaborators();
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    super.dispose();
+  }
+
+  // Carregar lista de colaboradores
+  Future<void> _loadCollaborators() async {
+    if (widget.shoppingList.id != null && widget.shoppingList.isShared) {
+      try {
+        final collaborators = await ListSharingService.getListCollaborators(
+          widget.shoppingList.id!,
+        );
+        setState(() {
+          _collaborators = collaborators;
+        });
+      } catch (error) {
+        // Erro ao carregar colaboradores (não crítico)
+      }
+    }
+  }
+
+  // Compartilhar com novo usuário
+  Future<void> _shareWithUser() async {
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Digite o nome do usuário'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Se a lista ainda não foi salva no Supabase, salvar primeiro
+      if (widget.shoppingList.id == null) {
+        final savedList = await ListSharingService.saveListToSupabase(
+          widget.shoppingList,
+          widget.currentUserId,
+        );
+        widget.shoppingList.id = savedList.id;
+        widget.shoppingList.ownerId = savedList.ownerId;
+      }
+
+      await ListSharingService.shareListWithUser(
+        widget.shoppingList.id!,
+        username,
+        widget.currentUserId,
+      );
+
+      widget.shoppingList.isShared = true;
+      _collaborators.add(username);
+      _usernameController.clear();
+      
+      widget.onListShared();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lista compartilhada com $username!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Remover usuário da lista
+  Future<void> _removeUser(String username) async {
+    try {
+      await ListSharingService.removeUserFromList(
+        widget.shoppingList.id!,
+        username,
+      );
+
+      setState(() {
+        _collaborators.remove(username);
+      });
+
+      if (_collaborators.isEmpty) {
+        widget.shoppingList.isShared = false;
+      }
+
+      widget.onListShared();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$username removido da lista'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro ao remover usuário: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.share, color: Colors.purple),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Compartilhar "${widget.shoppingList.name}"',
+              style: const TextStyle(fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Campo para adicionar usuário
+            TextField(
+              controller: _usernameController,
+              decoration: const InputDecoration(
+                labelText: 'Nome do usuário',
+                hintText: 'Digite o nome de usuário',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person_add),
+              ),
+              enabled: !_isLoading,
+              onSubmitted: (_) => _shareWithUser(),
+            ),
+            const SizedBox(height: 16),
+            
+            // Botão para compartilhar
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _shareWithUser,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                ),
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.share),
+                label: Text(_isLoading ? 'Compartilhando...' : 'Compartilhar'),
+              ),
+            ),
+            
+            // Lista de colaboradores
+            if (_collaborators.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Usuários com acesso:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 150,
+                child: ListView.builder(
+                  itemCount: _collaborators.length,
+                  itemBuilder: (context, index) {
+                    final username = _collaborators[index];
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      child: ListTile(
+                        leading: const Icon(Icons.person, color: Colors.blue),
+                        title: Text(username),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.remove_circle, color: Colors.red),
+                          onPressed: () => _removeUser(username),
+                          tooltip: 'Remover acesso',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Fechar'),
+        ),
+      ],
     );
   }
 }
