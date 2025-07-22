@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => AppSettingsProvider()..initialize()),
-        ChangeNotifierProvider(create: (context) => AuthProvider()),
+        ChangeNotifierProvider(create: (context) => AuthProvider()..initialize()),
       ],
       child: MaterialApp(
         title: 'SmartShop - Lista de Compras Inteligente',

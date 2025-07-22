@@ -1,16 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../services/supabase_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   Map<String, dynamic>? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isInitialized = false;
 
   Map<String, dynamic>? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   bool get isLoggedIn => _currentUser != null;
+  bool get isInitialized => _isInitialized;
+
+  // Inicializar o provider e verificar sessão salva
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    try {
+      _setLoading(true);
+      await _loadSavedSession();
+      _isInitialized = true;
+    } catch (e) {
+      print('Erro ao inicializar sessão: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Carregar sessão salva do SharedPreferences
+  Future<void> _loadSavedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userDataString = prefs.getString('current_user');
+      
+      if (userDataString != null && userDataString.isNotEmpty) {
+        final userData = json.decode(userDataString);
+        
+        // Verificar se o usuário ainda existe no banco
+        final userExists = await SupabaseService.client
+            .from('Users')
+            .select('*')
+            .eq('id', userData['id'])
+            .maybeSingle();
+        
+        if (userExists != null) {
+          _currentUser = userExists;
+          notifyListeners();
+        } else {
+          // Usuário não existe mais, limpar dados salvos
+          await _clearSavedSession();
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar sessão salva: $e');
+      await _clearSavedSession();
+    }
+  }
+
+  // Salvar sessão no SharedPreferences
+  Future<void> _saveSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_currentUser != null) {
+        await prefs.setString('current_user', json.encode(_currentUser));
+      }
+    } catch (e) {
+      print('Erro ao salvar sessão: $e');
+    }
+  }
+
+  // Limpar sessão salva
+  Future<void> _clearSavedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('current_user');
+    } catch (e) {
+      print('Erro ao limpar sessão: $e');
+    }
+  }
 
   // Login apenas com nome de usuário
   Future<bool> signInWithUsername(String username) async {
@@ -31,6 +102,7 @@ class AuthProvider extends ChangeNotifier {
 
       if (response != null) {
         _currentUser = response;
+        await _saveSession(); // Salvar sessão
         notifyListeners();
         return true;
       } else {
@@ -87,6 +159,7 @@ class AuthProvider extends ChangeNotifier {
           .single();
 
       _currentUser = response;
+      await _saveSession(); // Salvar sessão
       notifyListeners();
       return true;
     } on PostgrestException catch (error) {
@@ -109,6 +182,7 @@ class AuthProvider extends ChangeNotifier {
   // Logout
   Future<void> signOut() async {
     _currentUser = null;
+    await _clearSavedSession(); // Limpar sessão salva
     notifyListeners();
   }
 

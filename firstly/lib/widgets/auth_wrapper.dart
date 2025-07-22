@@ -11,8 +11,8 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        // Se está carregando, mostra tela de carregamento
-        if (authProvider.isLoading) {
+        // Se está carregando ou não foi inicializado, mostra tela de carregamento
+        if (authProvider.isLoading || !authProvider.isInitialized) {
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
