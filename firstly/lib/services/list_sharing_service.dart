@@ -29,7 +29,6 @@ class ListSharingService {
       
       final listData = {
         'name': list.name,
-        'description': null, // Pode adicionar descrição futuramente
         'owner_id': int.parse(userId),
         'created_at': DateTime.now().toIso8601String(),
         'updated_at': DateTime.now().toIso8601String(),
@@ -40,7 +39,7 @@ class ListSharingService {
       final response = await SupabaseService.client
           .from('shopping_lists')
           .insert(listData)
-          .select()
+          .select('id, name, owner_id, created_at, updated_at')
           .single();
 
       print('Resposta do Supabase: $response');
@@ -149,7 +148,7 @@ class ListSharingService {
       final ownListsResponse = await SupabaseService.client
           .from('shopping_lists')
           .select('''
-            *,
+            id, name, owner_id, created_at, updated_at,
             shopping_items(*)
           ''')
           .eq('owner_id', int.parse(userId))
@@ -161,7 +160,7 @@ class ListSharingService {
           .select('''
             permission,
             shopping_lists!inner(
-              *,
+              id, name, owner_id, created_at, updated_at,
               shopping_items(*)
             )
           ''')
@@ -307,7 +306,7 @@ class ListSharingService {
       // Buscar a lista
       final listResponse = await SupabaseService.client
           .from('shopping_lists')
-          .select()
+          .select('id, name, owner_id, created_at, updated_at')
           .eq('id', int.parse(listId))
           .single();
 
@@ -328,12 +327,18 @@ class ListSharingService {
       )).toList();
 
       // Converter a lista
+      // Verificar se a lista tem compartilhamentos
+      final shareResponse = await SupabaseService.client
+          .from('shared_lists')
+          .select('id')
+          .eq('list_id', int.parse(listId));
+      
       ShoppingList list = ShoppingList(
         name: listResponse['name'],
         items: items,
         id: listResponse['id'].toString(),
         ownerId: listResponse['owner_id'].toString(),
-        isShared: listResponse['is_shared'] ?? false,
+        isShared: shareResponse.length > 0,
         createdAt: DateTime.parse(listResponse['created_at']),
         sharedWith: [],
       );
@@ -395,19 +400,7 @@ class ListSharingService {
           .eq('list_id', int.parse(listId))
           .eq('user_id', userId);
 
-      // Verificar se ainda há outros compartilhamentos
-      final remainingShares = await SupabaseService.client
-          .from('shared_lists')
-          .select('id')
-          .eq('list_id', int.parse(listId));
-
-      // Se não há mais compartilhamentos, marcar lista como não compartilhada
-      if (remainingShares.isEmpty) {
-        await SupabaseService.client
-            .from('shopping_lists')
-            .update({'is_shared': false})
-            .eq('id', int.parse(listId));
-      }
+      print('Usuário $username removido da lista $listId com sucesso');
     } catch (error) {
       throw Exception('Erro ao remover usuário: $error');
     }
@@ -416,6 +409,9 @@ class ListSharingService {
   // Deletar lista completamente (apenas para o dono)
   static Future<void> deleteList(String listId, String userId) async {
     try {
+      print('deleteList - Iniciando deleção da lista ID: $listId');
+      print('User ID do solicitante: $userId');
+      
       // Verificar se o usuário é o dono da lista
       final listResponse = await SupabaseService.client
           .from('shopping_lists')
@@ -423,29 +419,41 @@ class ListSharingService {
           .eq('id', int.parse(listId))
           .single();
 
+      print('Owner ID da lista: ${listResponse['owner_id']}');
+
       if (listResponse['owner_id'].toString() != userId) {
         throw Exception('Apenas o dono pode deletar a lista');
       }
 
-      // Deletar todos os itens da lista
+      print('Usuário confirmado como dono. Iniciando deleção...');
+
+      // Deletar todos os itens da lista primeiro
+      print('Deletando itens da lista...');
       await SupabaseService.client
           .from('shopping_items')
           .delete()
           .eq('list_id', int.parse(listId));
+      print('Itens deletados com sucesso');
 
       // Deletar todos os compartilhamentos
+      print('Deletando compartilhamentos...');
       await SupabaseService.client
           .from('shared_lists')
           .delete()
           .eq('list_id', int.parse(listId));
+      print('Compartilhamentos deletados com sucesso');
 
-      // Deletar a lista
+      // Deletar a lista principal
+      print('Deletando lista principal...');
       await SupabaseService.client
           .from('shopping_lists')
           .delete()
           .eq('id', int.parse(listId));
+      print('Lista principal deletada com sucesso');
 
+      print('Lista ID $listId deletada completamente do Supabase!');
     } catch (error) {
+      print('Erro ao deletar lista: $error');
       throw Exception('Erro ao deletar lista: $error');
     }
   }
@@ -453,6 +461,8 @@ class ListSharingService {
   // Remover usuário da lista compartilhada (deixar de ser convidado)
   static Future<void> leaveSharedList(String listId, String userId) async {
     try {
+      print('leaveSharedList - Usuário $userId saindo da lista $listId');
+      
       // Remover o compartilhamento para este usuário
       await SupabaseService.client
           .from('shared_lists')
@@ -460,20 +470,9 @@ class ListSharingService {
           .eq('list_id', int.parse(listId))
           .eq('user_id', int.parse(userId));
 
-      // Verificar se ainda há outros compartilhamentos
-      final remainingShares = await SupabaseService.client
-          .from('shared_lists')
-          .select('id')
-          .eq('list_id', int.parse(listId));
-
-      // Se não há mais compartilhamentos, marcar lista como não compartilhada
-      if (remainingShares.isEmpty) {
-        await SupabaseService.client
-            .from('shopping_lists')
-            .update({'is_shared': false})
-            .eq('id', int.parse(listId));
-      }
+      print('Usuário $userId saiu da lista $listId com sucesso');
     } catch (error) {
+      print('Erro ao sair da lista compartilhada: $error');
       throw Exception('Erro ao sair da lista compartilhada: $error');
     }
   }

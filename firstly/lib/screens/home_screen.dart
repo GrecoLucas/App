@@ -445,19 +445,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     String confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
     
     // Verificar se é o dono da lista
-    if (list.isShared && list.id != null) {
+    if (list.id != null) {
+      // Lista tem ID do Supabase, verificar propriedade
       try {
         isOwner = await ListSharingService.isListOwner(list.id!, currentUserId);
         if (isOwner) {
           actionText = 'excluir a lista';
-          confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação irá remover a lista para todos os usuários e não pode ser desfeita.';
+          confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação irá remover a lista da base de dados e não pode ser desfeita.';
+        } else {
+          actionText = 'sair da lista compartilhada';
+          confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
         }
       } catch (error) {
         // Em caso de erro, assumir que não é o dono
+        print('Erro ao verificar propriedade da lista: $error');
         isOwner = false;
+        actionText = 'sair da lista compartilhada';
+        confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
       }
     } else {
-      // Lista local, sempre pode excluir
+      // Lista local (sem ID do Supabase), sempre pode excluir
       isOwner = true;
       actionText = 'excluir a lista';
       confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação não pode ser desfeita.';
@@ -499,12 +506,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  if (list.isShared && list.id != null) {
+                  // Se a lista tem ID do Supabase, deletar/sair do Supabase
+                  if (list.id != null) {
                     if (isOwner) {
-                      // Dono da lista: deletar completamente
+                      // Dono da lista: deletar completamente do Supabase
+                      print('Deletando lista do Supabase - ID: ${list.id}, Owner: $isOwner');
                       await ListSharingService.deleteList(list.id!, currentUserId);
                     } else {
                       // Convidado: apenas sair da lista compartilhada
+                      print('Saindo da lista compartilhada - ID: ${list.id}');
                       await ListSharingService.leaveSharedList(list.id!, currentUserId);
                     }
                   }
