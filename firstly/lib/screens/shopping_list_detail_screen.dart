@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import '../models/list.dart';
 import '../models/item.dart';
 import '../models/scanned_item.dart';
@@ -30,11 +31,22 @@ class ShoppingListDetailScreen extends StatefulWidget {
 
 class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   SortCriteria _currentSortCriteria = SortCriteria.alphabetical;
+  Timer? _pollingTimer;
+  static const Duration _pollingInterval = Duration(seconds: 15); // Polling a cada 15 segundos
+  ShoppingList? _currentList; // Lista local para controlar atualizações
 
   @override
   void initState() {
     super.initState();
+    _currentList = widget.shoppingList;
     _loadSortPreference();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _pollingTimer?.cancel();
+    super.dispose();
   }
 
   // Carrega a preferência de ordenação salva
@@ -43,6 +55,85 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     setState(() {
       _currentSortCriteria = sortCriteria;
     });
+  }
+
+  // Inicia o polling para atualizar a lista específica
+  void _startPolling() {
+    // Só fazer polling se a lista tem ID do Supabase (é compartilhada)
+    if (_currentList?.id != null) {
+      _pollingTimer = Timer.periodic(_pollingInterval, (timer) {
+        _refreshCurrentList();
+      });
+    }
+  }
+
+  // Atualiza apenas a lista atual do Supabase
+  Future<void> _refreshCurrentList() async {
+    if (_currentList?.id == null) return;
+    
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
+        final userLists = await ListSharingService.loadUserLists(
+          authProvider.currentUser!['id'].toString(),
+        );
+        
+        // Encontrar a lista específica pelo ID
+        final updatedList = userLists.firstWhere(
+          (list) => list.id == _currentList!.id,
+          orElse: () => _currentList!,
+        );
+        
+        if (mounted && _hasListChanged(updatedList)) {
+          setState(() {
+            _currentList = updatedList;
+            // Atualizar também a lista original
+            widget.shoppingList.items.clear();
+            widget.shoppingList.items.addAll(updatedList.items);
+            widget.shoppingList.name = updatedList.name;
+            widget.shoppingList.budget = updatedList.budget;
+          });
+          widget.onUpdate();
+        }
+      }
+    } catch (e) {
+      // Falhar silenciosamente durante o polling
+      print('Erro no polling da lista: $e');
+    }
+  }
+
+  // Verifica se a lista mudou
+  bool _hasListChanged(ShoppingList newList) {
+    if (_currentList == null) return true;
+    
+    if (newList.name != _currentList!.name ||
+        newList.items.length != _currentList!.items.length ||
+        newList.budget != _currentList!.budget) {
+      return true;
+    }
+    
+    // Verificar se os itens mudaram
+    for (int i = 0; i < newList.items.length; i++) {
+      if (i >= _currentList!.items.length) return true;
+      
+      final newItem = newList.items[i];
+      final oldItem = _currentList!.items[i];
+      
+      if (newItem.name != oldItem.name ||
+          newItem.price != oldItem.price ||
+          newItem.quantity != oldItem.quantity ||
+          newItem.isCompleted != oldItem.isCompleted) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Função para o pull-to-refresh
+  Future<void> _handleRefresh() async {
+    await _refreshCurrentList();
   }
 
   // Atualiza o critério de ordenação
@@ -702,55 +793,67 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
-                boxShadow: const [AppStyles.softShadow],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppConstants.paddingLarge),
-                    decoration: BoxDecoration(
-                      color: AppTheme.lightGreen,
-                      borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppTheme.primaryGreen,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.6,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppConstants.paddingXLarge),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppConstants.paddingXLarge),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+                        boxShadow: const [AppStyles.softShadow],
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGreen,
+                              borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                            ),
+                            child: Icon(
+                              Icons.shopping_basket_outlined,
+                              size: AppConstants.iconXLarge,
+                              color: AppTheme.primaryGreen,
+                            ),
+                          ),
+                          const SizedBox(height: AppConstants.paddingLarge),
+                          const Text(
+                            'Lista vazia',
+                            style: AppStyles.headingMedium,
+                          ),
+                          const SizedBox(height: AppConstants.paddingSmall),
+                          const Text(
+                            'Adicione produtos à sua lista de compras',
+                            style: AppStyles.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: AppConstants.paddingMedium),
+                          const Text(
+                            'Toque em "Adicionar" para começar!\n\nPuxe para baixo para atualizar.',
+                            style: AppStyles.captionGrey,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Icon(
-                      Icons.shopping_basket_outlined,
-                      size: AppConstants.iconXLarge,
-                      color: AppTheme.primaryGreen,
-                    ),
-                  ),
-                  const SizedBox(height: AppConstants.paddingLarge),
-                  const Text(
-                    'Lista vazia',
-                    style: AppStyles.headingMedium,
-                  ),
-                  const SizedBox(height: AppConstants.paddingSmall),
-                  const Text(
-                    'Adicione produtos à sua lista de compras',
-                    style: AppStyles.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppConstants.paddingMedium),
-                  const Text(
-                    'Toque em "Adicionar" para começar!',
-                    style: AppStyles.captionGrey,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -758,20 +861,25 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Widget _buildProductsList() {
     final sortedItems = widget.shoppingList.getSortedItems(_currentSortCriteria);
     
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge),
-      child: ListView.builder(
-        itemCount: sortedItems.length,
-        itemBuilder: (context, index) {
-          final item = sortedItems[index];
-          // Encontra o índice original do item para as operações de edição e remoção
-          final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
-          return EnhancedProductCard(
-            item: item,
-            onEdit: () => _editProduct(originalIndex),
-            onDelete: () => _removeProduct(originalIndex),
-          );
-        },
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppTheme.primaryGreen,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemCount: sortedItems.length,
+          itemBuilder: (context, index) {
+            final item = sortedItems[index];
+            // Encontra o índice original do item para as operações de edição e remoção
+            final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
+            return EnhancedProductCard(
+              item: item,
+              onEdit: () => _editProduct(originalIndex),
+              onDelete: () => _removeProduct(originalIndex),
+            );
+          },
+        ),
       ),
     );
   }
