@@ -67,6 +67,19 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     }
   }
 
+  // Pausa temporariamente o polling para evitar conflitos
+  void _pausePolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  // Reinicia o polling após operações
+  void _resumePolling() {
+    if (_pollingTimer == null) {
+      _startPolling();
+    }
+  }
+
   // Atualiza apenas a lista atual do Supabase
   Future<void> _refreshCurrentList() async {
     if (_currentList?.id == null) return;
@@ -88,11 +101,8 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         if (mounted && _hasListChanged(updatedList)) {
           setState(() {
             _currentList = updatedList;
-            // Atualizar também a lista original
-            widget.shoppingList.items.clear();
-            widget.shoppingList.items.addAll(updatedList.items);
-            widget.shoppingList.name = updatedList.name;
-            widget.shoppingList.budget = updatedList.budget;
+            // Atualizar também a lista original de forma mais cuidadosa
+            _syncListChanges(updatedList);
           });
           widget.onUpdate();
         }
@@ -101,6 +111,52 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       // Falhar silenciosamente durante o polling
       print('Erro no polling da lista: $e');
     }
+  }
+
+  // Sincroniza mudanças da lista remota com a local preservando referências
+  void _syncListChanges(ShoppingList updatedList) {
+    // Atualizar propriedades básicas
+    widget.shoppingList.name = updatedList.name;
+    widget.shoppingList.budget = updatedList.budget;
+    
+    // Criar um mapa dos itens remotos por ID para acesso rápido
+    final remoteItemsMap = <String, Item>{};
+    for (final remoteItem in updatedList.items) {
+      remoteItemsMap[remoteItem.id] = remoteItem;
+    }
+    
+    // Criar um mapa dos itens locais por ID
+    final localItemsMap = <String, Item>{};
+    for (final localItem in widget.shoppingList.items) {
+      localItemsMap[localItem.id] = localItem;
+    }
+    
+    // Remover itens que não existem mais
+    widget.shoppingList.items.removeWhere((localItem) => !remoteItemsMap.containsKey(localItem.id));
+    
+    // Atualizar ou adicionar itens
+    for (final remoteItem in updatedList.items) {
+      if (localItemsMap.containsKey(remoteItem.id)) {
+        // Atualizar item existente preservando referência
+        final localItem = localItemsMap[remoteItem.id]!;
+        localItem.name = remoteItem.name;
+        localItem.price = remoteItem.price;
+        localItem.quantity = remoteItem.quantity;
+        localItem.isCompleted = remoteItem.isCompleted;
+        localItem.addedBy = remoteItem.addedBy;
+        localItem.supabaseId = remoteItem.supabaseId;
+      } else {
+        // Adicionar novo item
+        widget.shoppingList.items.add(remoteItem);
+      }
+    }
+    
+    // Reordenar a lista para manter a ordem original
+    widget.shoppingList.items.sort((a, b) {
+      final aIndex = updatedList.items.indexWhere((item) => item.id == a.id);
+      final bIndex = updatedList.items.indexWhere((item) => item.id == b.id);
+      return aIndex.compareTo(bIndex);
+    });
   }
 
   // Verifica se a lista mudou
@@ -113,7 +169,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       return true;
     }
     
-    // Verificar se os itens mudaram
+    // Verificar se os itens mudaram (incluindo supabaseId)
     for (int i = 0; i < newList.items.length; i++) {
       if (i >= _currentList!.items.length) return true;
       
@@ -123,7 +179,9 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       if (newItem.name != oldItem.name ||
           newItem.price != oldItem.price ||
           newItem.quantity != oldItem.quantity ||
-          newItem.isCompleted != oldItem.isCompleted) {
+          newItem.isCompleted != oldItem.isCompleted ||
+          newItem.supabaseId != oldItem.supabaseId ||
+          newItem.addedBy != oldItem.addedBy) {
         return true;
       }
     }
@@ -157,44 +215,65 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         quantity: result['quantity'] ?? 1,
       );
       
-      setState(() {
-        widget.shoppingList.addItem(newItem);
-      });
+      // Pausar o polling durante a adição para evitar conflitos
+      _pausePolling();
       
-      // Se a lista tem ID do Supabase, sincronizar
-      if (widget.shoppingList.id != null) {
-        try {
-          print('Adicionando item ao Supabase - Lista ID: ${widget.shoppingList.id}');
-          print('Item: ${newItem.name}');
-          
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          await ListSharingService.addItemToList(
-            widget.shoppingList.id!,
-            newItem,
-            addedByUserId: authProvider.currentUser?['id']?.toString(),
-          );
-          
-          print('Item adicionado com sucesso no Supabase');
-        } catch (error) {
-          print('Erro ao sincronizar item: $error');
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Erro ao sincronizar item: $error'),
-                backgroundColor: AppTheme.warningRed,
-              ),
+      try {
+        // Se a lista tem ID do Supabase, sincronizar primeiro
+        if (widget.shoppingList.id != null) {
+          try {
+            print('Adicionando item ao Supabase - Lista ID: ${widget.shoppingList.id}');
+            print('Item: ${newItem.name}');
+            
+            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+            await ListSharingService.addItemToList(
+              widget.shoppingList.id!,
+              newItem,
+              addedByUserId: authProvider.currentUser?['id']?.toString(),
             );
+            
+            print('Item adicionado com sucesso no Supabase');
+            
+            // Adicionar localmente apenas após sucesso da sincronização
+            setState(() {
+              widget.shoppingList.addItem(newItem);
+            });
+            
+          } catch (error) {
+            print('Erro ao sincronizar item: $error');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Erro ao sincronizar item: $error'),
+                  backgroundColor: AppTheme.warningRed,
+                ),
+              );
+            }
+            return; // Não continuar se falhou a sincronização
           }
+        } else {
+          // Lista local apenas - adicionar diretamente
+          setState(() {
+            widget.shoppingList.addItem(newItem);
+          });
         }
+        
+        widget.onUpdate();
+      } finally {
+        // Reiniciar o polling após a adição
+        _resumePolling();
       }
-      
-      widget.onUpdate();
     }
   }
 
   // Edita um produto da lista
-  void _editProduct(int index) async {
-    final item = widget.shoppingList.items[index];
+  void _editProduct(Item item) async {
+    // Encontrar o índice atual do item na lista original
+    final index = widget.shoppingList.items.indexWhere((i) => i.id == item.id);
+    if (index == -1) {
+      print('Item não encontrado na lista: ${item.id}');
+      return;
+    }
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => AddProductDialog(
@@ -206,41 +285,86 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
     
     if (result != null) {
-      setState(() {
-        widget.shoppingList.editItem(
-          item.id, 
-          result['name'], 
-          result['price'],
-          result['quantity'] ?? 1,
-        );
-      });
+      // Pausar o polling durante a edição para evitar conflitos
+      _pausePolling();
       
-      // Se a lista tem ID do Supabase, sincronizar
-      if (widget.shoppingList.id != null && item.supabaseId != null) {
-        try {
-          await ListSharingService.updateItemInList(
-            widget.shoppingList.id!,
-            item.supabaseId!,
-            item,
-          );
-        } catch (error) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Erro ao sincronizar edição: $error'),
-                backgroundColor: AppTheme.warningRed,
-              ),
+      try {
+        // Se a lista tem ID do Supabase, sincronizar primeiro
+        if (widget.shoppingList.id != null && item.supabaseId != null) {
+          // Atualizar valores locais temporariamente para sincronização
+          final originalName = item.name;
+          final originalPrice = item.price;
+          final originalQuantity = item.quantity;
+          
+          item.name = result['name'];
+          item.price = result['price'];
+          item.quantity = result['quantity'] ?? 1;
+          
+          try {
+            await ListSharingService.updateItemInList(
+              widget.shoppingList.id!,
+              item.supabaseId!,
+              item,
             );
+            
+            print('Item sincronizado com sucesso no Supabase');
+            
+            // Atualizar a interface apenas após sucesso da sincronização
+            setState(() {
+              final itemToUpdate = widget.shoppingList.items.firstWhere((i) => i.id == item.id);
+              itemToUpdate.name = result['name'];
+              itemToUpdate.price = result['price'];
+              itemToUpdate.quantity = result['quantity'] ?? 1;
+            });
+            
+          } catch (error) {
+            // Reverter mudanças locais em caso de erro
+            item.name = originalName;
+            item.price = originalPrice;
+            item.quantity = originalQuantity;
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Erro ao sincronizar edição: $error'),
+                  backgroundColor: AppTheme.warningRed,
+                ),
+              );
+            }
+            return; // Não continuar se falhou a sincronização
           }
+        } else {
+          // Lista local apenas - aplicar mudanças diretamente
+          setState(() {
+            final itemToUpdate = widget.shoppingList.items.firstWhere((i) => i.id == item.id);
+            itemToUpdate.name = result['name'];
+            itemToUpdate.price = result['price'];
+            itemToUpdate.quantity = result['quantity'] ?? 1;
+          });
         }
+        
+        widget.onUpdate();
+        
+        // Recarregar a lista completa se for compartilhada
+        if (widget.shoppingList.id != null) {
+          await _refreshCurrentList();
+        }
+      } finally {
+        // Reiniciar o polling após a edição
+        _resumePolling();
       }
-      
-      widget.onUpdate();
     }
   }
 
   // Remove um produto da lista
-  void _removeProduct(int index) {
+  void _removeProduct(Item item) async {
+    // Encontrar o índice atual do item na lista original
+    final index = widget.shoppingList.items.indexWhere((i) => i.id == item.id);
+    if (index == -1) {
+      print('Item não encontrado na lista: ${item.id}');
+      return;
+    }
+    
     showDialog(
       context: context,
       builder: (context) {
@@ -266,7 +390,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             ],
           ),
           content: Text(
-            'Remover "${widget.shoppingList.items[index].name}" da lista?',
+            'Remover "${item.name}" da lista?',
             style: AppStyles.bodyMedium,
           ),
           actions: [
@@ -276,33 +400,55 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                final item = widget.shoppingList.items[index];
+                // Pausar o polling durante a remoção para evitar conflitos
+                _pausePolling();
                 
-                setState(() {
-                  widget.shoppingList.removeItem(index);
-                });
-                
-                // Se a lista tem ID do Supabase, sincronizar
-                if (widget.shoppingList.id != null && item.supabaseId != null) {
-                  try {
-                    await ListSharingService.removeItemFromList(
-                      widget.shoppingList.id!,
-                      item.supabaseId!,
-                    );
-                  } catch (error) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Erro ao sincronizar remoção: $error'),
-                          backgroundColor: AppTheme.warningRed,
-                        ),
+                try {
+                  // Se a lista tem ID do Supabase, sincronizar primeiro
+                  if (widget.shoppingList.id != null && item.supabaseId != null) {
+                    try {
+                      await ListSharingService.removeItemFromList(
+                        widget.shoppingList.id!,
+                        item.supabaseId!,
                       );
+                      
+                      print('Item removido com sucesso do Supabase');
+                      
+                      // Remover localmente apenas após sucesso da sincronização
+                      setState(() {
+                        widget.shoppingList.items.removeWhere((i) => i.id == item.id);
+                      });
+                      
+                    } catch (error) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Erro ao sincronizar remoção: $error'),
+                            backgroundColor: AppTheme.warningRed,
+                          ),
+                        );
+                      }
+                      Navigator.pop(context);
+                      return; // Não continuar se falhou a sincronização
                     }
+                  } else {
+                    // Lista local apenas - remover diretamente
+                    setState(() {
+                      widget.shoppingList.items.removeWhere((i) => i.id == item.id);
+                    });
                   }
+                  
+                  widget.onUpdate();
+                  Navigator.pop(context);
+                  
+                  // Recarregar a lista completa se for compartilhada
+                  if (widget.shoppingList.id != null) {
+                    await _refreshCurrentList();
+                  }
+                } finally {
+                  // Reiniciar o polling após a remoção
+                  _resumePolling();
                 }
-                
-                widget.onUpdate();
-                Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.warningRed,
@@ -325,51 +471,72 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           print('Recebidos ${items.length} itens favoritos: $items');
           List<Item> newItems = [];
           
-          // Esta função será chamada quando os itens forem selecionados
-          setState(() {
+          // Pausar o polling durante a adição para evitar conflitos
+          _pausePolling();
+          
+          try {
+            // Esta função será chamada quando os itens forem selecionados
             for (final itemData in items) {
               final newItem = Item(
                 name: itemData['name'], 
                 price: itemData['price'],
                 quantity: itemData['quantity'] ?? 1,
               );
-              print('Adicionando item: ${newItem.name}, preço: ${newItem.price}, quantidade: ${newItem.quantity}');
-              widget.shoppingList.addItem(newItem);
+              print('Preparando item: ${newItem.name}, preço: ${newItem.price}, quantidade: ${newItem.quantity}');
               newItems.add(newItem);
             }
-          });
-          
-          // Se a lista tem ID do Supabase, sincronizar
-          if (widget.shoppingList.id != null) {
-            try {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              for (final item in newItems) {
-                await ListSharingService.addItemToList(
-                  widget.shoppingList.id!,
-                  item,
-                  addedByUserId: authProvider.currentUser?['id']?.toString(),
-                );
+            
+            // Se a lista tem ID do Supabase, sincronizar primeiro
+            if (widget.shoppingList.id != null) {
+              try {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                for (final item in newItems) {
+                  await ListSharingService.addItemToList(
+                    widget.shoppingList.id!,
+                    item,
+                    addedByUserId: authProvider.currentUser?['id']?.toString(),
+                  );
+                }
+                
+                // Adicionar localmente apenas após sucesso da sincronização
+                setState(() {
+                  for (final item in newItems) {
+                    widget.shoppingList.addItem(item);
+                  }
+                });
+                
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erro ao sincronizar favoritos: $error'),
+                      backgroundColor: AppTheme.warningRed,
+                    ),
+                  );
+                }
+                return; // Não continuar se falhou a sincronização
               }
-            } catch (error) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Erro ao sincronizar favoritos: $error'),
-                    backgroundColor: AppTheme.warningRed,
-                  ),
-                );
-              }
+            } else {
+              // Lista local apenas - adicionar diretamente
+              setState(() {
+                for (final item in newItems) {
+                  widget.shoppingList.addItem(item);
+                }
+              });
             }
+            
+            widget.onUpdate();
+            
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos'),
+                backgroundColor: AppTheme.primaryGreen,
+              ),
+            );
+          } finally {
+            // Reiniciar o polling após a adição
+            _resumePolling();
           }
-          
-          widget.onUpdate();
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos'),
-              backgroundColor: AppTheme.primaryGreen,
-            ),
-          );
         },
       ),
     );
@@ -391,39 +558,55 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         quantity: scannedItem.quantity,
       );
       
-      setState(() {
-        widget.shoppingList.addItem(newItem);
-      });
+      // Pausar o polling durante a adição para evitar conflitos
+      _pausePolling();
       
-      // Se a lista tem ID do Supabase, sincronizar
-      if (widget.shoppingList.id != null) {
-        try {
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          await ListSharingService.addItemToList(
-            widget.shoppingList.id!,
-            newItem,
-            addedByUserId: authProvider.currentUser?['id']?.toString(),
-          );
-        } catch (error) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Erro ao sincronizar item escaneado: $error'),
-                backgroundColor: AppTheme.warningRed,
-              ),
+      try {
+        // Se a lista tem ID do Supabase, sincronizar primeiro
+        if (widget.shoppingList.id != null) {
+          try {
+            final authProvider = Provider.of<AuthProvider>(context, listen: false);
+            await ListSharingService.addItemToList(
+              widget.shoppingList.id!,
+              newItem,
+              addedByUserId: authProvider.currentUser?['id']?.toString(),
             );
+            
+            // Adicionar localmente apenas após sucesso da sincronização
+            setState(() {
+              widget.shoppingList.addItem(newItem);
+            });
+            
+          } catch (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Erro ao sincronizar item escaneado: $error'),
+                  backgroundColor: AppTheme.warningRed,
+                ),
+              );
+            }
+            return; // Não continuar se falhou a sincronização
           }
+        } else {
+          // Lista local apenas - adicionar diretamente
+          setState(() {
+            widget.shoppingList.addItem(newItem);
+          });
         }
-      }
-      
-      widget.onUpdate();
+        
+        widget.onUpdate();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${scannedItem.name} adicionado via scanner'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${scannedItem.name} adicionado via scanner'),
+            backgroundColor: AppTheme.primaryGreen,
+          ),
+        );
+      } finally {
+        // Reiniciar o polling após a adição
+        _resumePolling();
+      }
     }
   }
 
@@ -871,12 +1054,11 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           itemCount: sortedItems.length,
           itemBuilder: (context, index) {
             final item = sortedItems[index];
-            // Encontra o índice original do item para as operações de edição e remoção
-            final originalIndex = widget.shoppingList.items.indexWhere((originalItem) => originalItem.id == item.id);
+            
             return EnhancedProductCard(
               item: item,
-              onEdit: () => _editProduct(originalIndex),
-              onDelete: () => _removeProduct(originalIndex),
+              onEdit: () => _editProduct(item),
+              onDelete: () => _removeProduct(item),
             );
           },
         ),
@@ -1076,6 +1258,31 @@ class _ShareListDialogState extends State<_ShareListDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Informação sobre o compartilhamento
+            if (widget.shoppingList.id == null) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Esta lista será salva na nuvem ao compartilhar pela primeira vez.',
+                        style: TextStyle(color: Colors.blue[700], fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
             // Campo para adicionar usuário
             TextField(
               controller: _usernameController,

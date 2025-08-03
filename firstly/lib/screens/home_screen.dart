@@ -365,54 +365,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         );
                       }
                       
-                      // Se estiver logado, salvar direto no Supabase
-                      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
-                        try {
-                          print('Tentando salvar lista no Supabase...');
-                          print('User ID: ${authProvider.currentUser!['id']}');
-                          print('Lista: ${newList.name}');
-                          
-                          final savedList = await ListSharingService.saveListToSupabase(
-                            newList,
-                            authProvider.currentUser!['id'].toString(),
-                          );
-                          
-                          print('Lista salva com sucesso! ID: ${savedList.id}');
-                          
-                          // Atualizar a lista local com os dados do Supabase
-                          newList.id = savedList.id;
-                          newList.ownerId = savedList.ownerId;
-                          newList.createdAt = savedList.createdAt;
-                          
-                          setState(() {
-                            shoppingLists.add(newList);
-                          });
-                          
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Lista "${newList.name}" criada com sucesso!'),
-                              backgroundColor: AppTheme.primaryGreen,
-                            ),
-                          );
-                        } catch (error) {
-                          print('Erro ao salvar lista: $error');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erro ao criar lista: $error'),
-                              backgroundColor: AppTheme.warningRed,
-                            ),
-                          );
-                          return;
-                        }
-                      } else {
-                        print('Usuário não logado, salvando localmente');
-                        // Se não estiver logado, salvar apenas localmente
-                        setState(() {
-                          shoppingLists.add(newList);
-                        });
-                        await _saveShoppingLists();
-                      }
+                      // SEMPRE salvar apenas localmente na criação
+                      // A lista só será enviada para a Supabase quando for compartilhada
+                      print('Salvando lista localmente: ${newList.name}');
+                      
+                      setState(() {
+                        shoppingLists.add(newList);
+                      });
+                      await _saveShoppingLists();
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Lista "${newList.name}" criada com sucesso!'),
+                          backgroundColor: AppTheme.primaryGreen,
+                        ),
+                      );
                       
                       _animationController.forward();
                       Navigator.pop(context);

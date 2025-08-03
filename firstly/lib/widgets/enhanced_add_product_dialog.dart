@@ -29,10 +29,12 @@ class AddProductDialog extends StatefulWidget {
 class _AddProductDialogState extends State<AddProductDialog> {
   late TextEditingController nameController;
   late TextEditingController priceController;
+  late TextEditingController weightController; // Novo: para peso/quantidade em kg
   String productName = '';
   String productPrice = '';
   int selectedQuantity = 1;
   bool _isFavorite = false;
+  bool _isWeightMode = false; // Novo: controla se está no modo por peso
   final ImageService _imageService = ImageService();
 
   @override
@@ -43,6 +45,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
     selectedQuantity = widget.initialQuantity ?? 1;
     nameController = TextEditingController(text: productName);
     priceController = TextEditingController(text: productPrice);
+    weightController = TextEditingController(text: '1.0'); // Peso padrão: 1kg
     
     if (productName.isNotEmpty) {
       _checkIfFavorite();
@@ -53,6 +56,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   void dispose() {
     nameController.dispose();
     priceController.dispose();
+    weightController.dispose();
     super.dispose();
   }
 
@@ -264,13 +268,39 @@ class _AddProductDialogState extends State<AddProductDialog> {
           SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
           Flexible(
             child: Text(
-              widget.isEditing ? 'Editar Produto' : 'Adicionar Produto',
+              widget.isEditing 
+                  ? 'Editar Produto' 
+                  : (_isWeightMode ? 'Pesagem' : 'Unidade'),
               style: AppStyles.headingMedium.copyWith(
                 fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize!),
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          // Botão para alternar entre modo normal e por peso (só na criação)
+          if (!widget.isEditing) ...[
+            const Spacer(),
+            IconButton(
+              onPressed: () {
+                setState(() {
+                  _isWeightMode = !_isWeightMode;
+                  // Limpar campos ao trocar de modo
+                  priceController.clear();
+                  if (_isWeightMode) {
+                    weightController.text = '1.0';
+                  } else {
+                    selectedQuantity = 1;
+                  }
+                });
+              },
+              icon: Icon(
+                _isWeightMode ? Icons.shopping_cart : Icons.scale,
+                color: _isWeightMode ? AppTheme.primaryGreen : Colors.orange,
+                size: 24,
+              ),
+              tooltip: _isWeightMode ? 'Modo normal' : 'Modo por peso',
+            ),
+          ],
         ],
       ),
       content: SingleChildScrollView(
@@ -322,7 +352,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   controller: priceController,
                   onChanged: (value) => productPrice = value,
                   decoration: InputDecoration(
-                    labelText: 'Preço (opcional)',
+                    labelText: _isWeightMode ? 'Preço por Kg (opcional)' : 'Preço (opcional)',
                     labelStyle: TextStyle(
                       fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
                     ),
@@ -330,13 +360,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
                       borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
                     ),
                     prefixText: '${settingsProvider.primaryCurrency.symbol} ',
-                    hintText: '0,00',
+                    hintText: _isWeightMode ? '0,00/kg' : '0,00',
                     hintStyle: TextStyle(
                       fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
                     ),
                     prefixIcon: Icon(
-                      Icons.attach_money,
+                      _isWeightMode ? Icons.scale : Icons.attach_money,
                       size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                      color: _isWeightMode ? Colors.orange : null,
                     ),
                     filled: true,
                     fillColor: AppTheme.softGrey,
@@ -354,63 +385,103 @@ class _AddProductDialogState extends State<AddProductDialog> {
             ),
             SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
             
-            // Campo quantidade
-            Container(
-              decoration: BoxDecoration(
-                color: AppTheme.softGrey,
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
-              ),
-              child: DropdownButtonFormField<int>(
-                value: selectedQuantity,
+            // Campo quantidade/peso
+            if (_isWeightMode) ...[
+              // Campo de peso em kg
+              TextField(
+                controller: weightController,
                 decoration: InputDecoration(
-                  labelText: 'Quantidade',
+                  labelText: 'Peso (kg)',
                   labelStyle: TextStyle(
                     fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
                   ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  ),
+                  hintText: 'Ex: 1.5, 0.8, 2.0...',
+                  hintStyle: TextStyle(
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
                   ),
                   prefixIcon: Icon(
-                    Icons.numbers,
+                    Icons.fitness_center,
                     size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                    color: Colors.orange,
+                  ),
+                  suffixText: 'kg',
+                  filled: true,
+                  fillColor: AppTheme.softGrey,
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                    vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
                   ),
                 ),
-                dropdownColor: Colors.white,
                 style: TextStyle(
                   fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
-                  color: Colors.black87,
                 ),
-                items: List.generate(20, (index) => index + 1)
-                    .map((quantity) => DropdownMenuItem<int>(
-                          value: quantity,
-                          child: Text('$quantity'),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedQuantity = value ?? 1;
-                  });
-                },
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
-            ),
+            ] else ...[
+              // Campo quantidade normal
+              Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.softGrey,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: DropdownButtonFormField<int>(
+                  value: selectedQuantity,
+                  decoration: InputDecoration(
+                    labelText: 'Quantidade',
+                    labelStyle: TextStyle(
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                    ),
+                    prefixIcon: Icon(
+                      Icons.numbers,
+                      size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                    ),
+                  ),
+                  dropdownColor: Colors.white,
+                  style: TextStyle(
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    color: Colors.black87,
+                  ),
+                  items: List.generate(20, (index) => index + 1)
+                      .map((quantity) => DropdownMenuItem<int>(
+                            value: quantity,
+                            child: Text('$quantity'),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedQuantity = value ?? 1;
+                    });
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
       actions: [
-        IconButton(
-          onPressed: _toggleFavorite,
-          icon: Icon(
-            _isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: _isFavorite ? Colors.red : Colors.grey,
-            size: isSmallScreen ? 20 : 24,
+        // Botão de favoritos (não aparece no modo peso)
+        if (!_isWeightMode) ...[
+          IconButton(
+            onPressed: _toggleFavorite,
+            icon: Icon(
+              _isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: _isFavorite ? Colors.red : Colors.grey,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
+            style: IconButton.styleFrom(
+              backgroundColor: _isFavorite ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+            ),
           ),
-          tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
-          style: IconButton.styleFrom(
-            backgroundColor: _isFavorite ? Colors.red.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-          ),
-        ),
+        ],
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text(
@@ -425,6 +496,8 @@ class _AddProductDialogState extends State<AddProductDialog> {
           onPressed: () async {
             if (productName.trim().isNotEmpty) {
               double price = 0.0;
+              double finalWeight = 1.0;
+              int finalQuantity = 1;
               
               // Se o preço foi fornecido, tenta fazer o parse
               if (productPrice.trim().isNotEmpty) {
@@ -438,17 +511,44 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 }
               }
               
-
+              if (_isWeightMode) {
+                // Modo por peso: calcular preço final baseado no peso
+                final weight = double.tryParse(
+                  weightController.text.replaceAll(',', '.').trim(),
+                );
+                if (weight != null && weight > 0) {
+                  finalWeight = weight;
+                  // Se há preço por kg, calcular o preço total
+                  if (price > 0) {
+                    price = price * weight; // preço final = preço/kg * peso
+                  }
+                  finalQuantity = 1; // Sempre 1 no modo peso
+                } else {
+                  // Peso inválido
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Por favor, insira um peso válido'),
+                      backgroundColor: AppTheme.warningRed,
+                    ),
+                  );
+                  return;
+                }
+              } else {
+                // Modo normal
+                finalQuantity = selectedQuantity;
+              }
               
-              // Se está editando e é favorito, incrementar uso
-              if (!widget.isEditing && _isFavorite) {
+              // Se está editando e é favorito (só no modo normal), incrementar uso
+              if (!widget.isEditing && !_isWeightMode && _isFavorite) {
                 await FavoriteItemsService.incrementItemUsage(productName.trim());
               }
               
               Navigator.pop(context, {
                 'name': productName.trim(),
                 'price': price,
-                'quantity': selectedQuantity,
+                'quantity': finalQuantity,
+                'weight': _isWeightMode ? finalWeight : null, // Adicionar info do peso se relevante
+                'isWeightBased': _isWeightMode, // Flag para identificar se foi adicionado por peso
               });
             }
           },
