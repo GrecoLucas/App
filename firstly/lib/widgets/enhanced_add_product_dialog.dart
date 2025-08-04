@@ -244,17 +244,23 @@ class _AddProductDialogState extends State<AddProductDialog> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 400;
     
     return AlertDialog(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
       ),
-      contentPadding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+      contentPadding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge * 1.5)),
+      // Aumentar o tamanho do dialog
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: screenWidth * 0.05, // 5% de margem horizontal
+        vertical: screenHeight * 0.1,   // 10% de margem vertical
+      ),
       title: Row(
         children: [
           Container(
-            padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
             decoration: BoxDecoration(
               gradient: AppTheme.primaryGradient,
               borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
@@ -262,7 +268,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
             child: Icon(
               widget.isEditing ? Icons.edit : Icons.add_shopping_cart,
               color: Colors.white,
-              size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+              size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
             ),
           ),
           SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
@@ -272,7 +278,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   ? 'Editar Produto' 
                   : (_isWeightMode ? 'Pesagem' : 'Unidade'),
               style: AppStyles.headingMedium.copyWith(
-                fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize!),
+                fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize! * 1.2),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -294,9 +300,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 });
               },
               icon: Icon(
-                _isWeightMode ? Icons.shopping_cart : Icons.scale,
-                color: _isWeightMode ? AppTheme.primaryGreen : Colors.orange,
-                size: 24,
+                _isWeightMode ? Icons.shopping_cart : Icons.balance,
+                color: Colors.black,
+                size: 28,
               ),
               tooltip: _isWeightMode ? 'Modo normal' : 'Modo por peso',
             ),
@@ -318,28 +324,28 @@ class _AddProductDialogState extends State<AddProductDialog> {
               decoration: InputDecoration(
                 labelText: 'Nome do Produto',
                 labelStyle: TextStyle(
-                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
                 ),
                 hintText: 'Ex: Pão, Leite, Ovos...',
                 hintStyle: TextStyle(
-                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
+                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall * 1.2),
                 ),
                 prefixIcon: Icon(
                   Icons.shopping_basket,
-                  size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                  size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
                 ),
                 filled: true,
                 fillColor: AppTheme.softGrey,
                 contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                  vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                  horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
+                  vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
                 ),
               ),
               style: TextStyle(
-                fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
               ),
               autofocus: true,
             ),
@@ -354,7 +360,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   decoration: InputDecoration(
                     labelText: _isWeightMode ? 'Preço por Kg (opcional)' : 'Preço (opcional)',
                     labelStyle: TextStyle(
-                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
@@ -362,22 +368,22 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     prefixText: '${settingsProvider.primaryCurrency.symbol} ',
                     hintText: _isWeightMode ? '0,00/kg' : '0,00',
                     hintStyle: TextStyle(
-                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall * 1.2),
                     ),
                     prefixIcon: Icon(
                       _isWeightMode ? Icons.scale : Icons.attach_money,
-                      size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
-                      color: _isWeightMode ? Colors.orange : null,
+                      size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
+                      color: _isWeightMode ? Colors.black : null,
                     ),
                     filled: true,
                     fillColor: AppTheme.softGrey,
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                      horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
+                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
                     ),
                   ),
                   style: TextStyle(
-                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 );
@@ -393,30 +399,30 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 decoration: InputDecoration(
                   labelText: 'Peso (kg)',
                   labelStyle: TextStyle(
-                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
                   ),
                   hintText: 'Ex: 1.5, 0.8, 2.0...',
                   hintStyle: TextStyle(
-                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall),
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontSmall * 1.2),
                   ),
                   prefixIcon: Icon(
-                    Icons.fitness_center,
-                    size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
-                    color: Colors.orange,
+                    Icons.fitness_center_outlined,
+                    size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
+                    color: Colors.black,
                   ),
                   suffixText: 'kg',
                   filled: true,
                   fillColor: AppTheme.softGrey,
                   contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                    vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                    horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
+                    vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
                   ),
                 ),
                 style: TextStyle(
-                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                  fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
@@ -433,20 +439,20 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   decoration: InputDecoration(
                     labelText: 'Quantidade',
                     labelStyle: TextStyle(
-                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                      fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                     ),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.symmetric(
-                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                      vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium * 1.2),
                     ),
                     prefixIcon: Icon(
                       Icons.numbers,
-                      size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
+                      size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
                     ),
                   ),
                   dropdownColor: Colors.white,
                   style: TextStyle(
-                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+                    fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
                     color: Colors.black87,
                   ),
                   items: List.generate(20, (index) => index + 1)
@@ -474,7 +480,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
             icon: Icon(
               _isFavorite ? Icons.favorite : Icons.favorite_border,
               color: _isFavorite ? Colors.red : Colors.grey,
-              size: isSmallScreen ? 20 : 24,
+              size: isSmallScreen ? 24 : 28,
             ),
             tooltip: _isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
             style: IconButton.styleFrom(
@@ -487,7 +493,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
           child: Text(
             'Cancelar',
             style: TextStyle(
-              fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
+              fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.1),
             ),
           ),
         ),
