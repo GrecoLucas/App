@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import 'shopping_list_detail_screen.dart';
 import 'favorite_items_screen.dart';
 import 'settings_screen.dart';
+import 'help_screen.dart';
 
 enum ListSortCriteria {
   nameAscending,
@@ -587,6 +588,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               currentCriteria: _currentListSortCriteria,
               onSortChanged: _sortLists,
             ),
+          const SizedBox(width: AppConstants.paddingSmall),
+          // Botão de ajuda
+          Container(
+            child: IconButton(
+              icon: const Icon(
+                Icons.help_outline,
+                color: AppTheme.primaryGreen,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const HelpScreen(),
+                  ),
+                );
+              },
+              tooltip: 'Como usar o app',
+            ),
+          ),
           const SizedBox(width: AppConstants.paddingSmall),
           // Botão de logout
           Consumer<AuthProvider>(

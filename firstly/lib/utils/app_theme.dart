@@ -14,7 +14,7 @@ class AppTheme {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [primaryGreen, Color(0xFF66BB6A)],
+    colors: [Color.fromARGB(255, 48, 140, 206), Color.fromARGB(255, 102, 183, 187)],
   );
 
   static const LinearGradient cardGradient = LinearGradient(

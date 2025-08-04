@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bem-vindo, $username!'),
+            content: Text('Bem-vindo, $username!, Aperte no botão "?"'),
             backgroundColor: Colors.green,
           ),
         );
