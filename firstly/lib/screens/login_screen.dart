@@ -12,11 +12,13 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
-  bool _isSignUp = false;
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
     _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -89,6 +91,40 @@ class _LoginScreenState extends State<LoginScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 16),
+                    
+                    // Campo de senha
+                    TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Senha',
+                        hintText: 'Digite sua senha',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Por favor, insira sua senha';
+                        }
+                        if (value.length < 4) {
+                          return 'A senha deve ter pelo menos 4 dígitos';
+                        }
+                        return null;
+                      },
+                    ),
                     const SizedBox(height: 24),
                     
                     // Mensagem de erro
@@ -132,9 +168,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: authProvider.isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : Text(
-                                _isSignUp ? 'Criar Usuário' : 'Entrar',
-                                style: const TextStyle(
+                            : const Text(
+                                'Entrar',
+                                style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -143,18 +179,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     
-                    // Botão para alternar entre login e cadastro
+                    // Botão para ir para cadastro
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          _isSignUp = !_isSignUp;
-                        });
                         authProvider.clearError();
+                        Navigator.pushNamed(context, '/register');
                       },
                       child: Text(
-                        _isSignUp
-                            ? 'Já tem uma conta? Fazer login'
-                            : 'Não tem uma conta? Criar usuário',
+                        'Não tem uma conta? Criar usuário',
                         style: TextStyle(
                           color: Theme.of(context).primaryColor,
                           fontWeight: FontWeight.w500,
@@ -176,23 +208,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
     bool success;
     final username = _usernameController.text.trim();
+    final password = _passwordController.text;
 
-    if (_isSignUp) {
-      success = await authProvider.signUpWithUsername(username);
-      if (success && mounted) {
+    success = await authProvider.signInWithUsername(username, password: password);
+    if (success && mounted) {
+      // Verificar se uma senha foi definida pela primeira vez
+      if (authProvider.passwordWasSet) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Usuário "$username" criado com sucesso!'),
+            content: Text('Senha definida com sucesso! Bem-vindo, $username!'),
             backgroundColor: Colors.green,
+            duration: const Duration(seconds: 4),
           ),
         );
-      }
-    } else {
-      success = await authProvider.signInWithUsername(username);
-      if (success && mounted) {
+        authProvider.clearPasswordWasSetFlag(); // Limpar a flag
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Bem-vindo, $username!, Aperte no botão "?"'),
+            content: Text('Bem-vindo de volta, $username!'),
             backgroundColor: Colors.green,
           ),
         );

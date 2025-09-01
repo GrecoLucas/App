@@ -1,6 +1,7 @@
 import '../models/list.dart';
 import '../models/item.dart';
 import 'supabase_service.dart';
+import 'notification_service.dart';
 
 class ListSharingService {
   // Função para contar quantas pessoas têm acesso a uma lista (dono + colaboradores)
@@ -80,7 +81,7 @@ class ListSharingService {
     }
   }
 
-  // Compartilhar lista com usuário específico
+  // Compartilhar lista com usuário específico (criar convite)
   static Future<bool> shareListWithUser(String listId, String username, String currentUserId) async {
     try {
       print('shareListWithUser - Iniciando...');
@@ -109,35 +110,37 @@ class ListSharingService {
         throw Exception('Você não pode compartilhar uma lista consigo mesmo');
       }
 
-      // Verificar se a lista já não está compartilhada com este usuário
-      final existingShare = await SupabaseService.client
-          .from('shared_lists')
-          .select('id')
-          .eq('list_id', int.parse(listId))
-          .eq('user_id', int.parse(targetUserId))
-          .maybeSingle();
+      // Buscar informações da lista
+      final listResponse = await SupabaseService.client
+          .from('shopping_lists')
+          .select('name')
+          .eq('id', int.parse(listId))
+          .single();
 
-      print('Compartilhamento existente: $existingShare');
+      final listName = listResponse['name'];
 
-      if (existingShare != null) {
-        throw Exception('Lista já compartilhada com este usuário');
-      }
+      // Buscar nome do usuário atual
+      final currentUserResponse = await SupabaseService.client
+          .from('Users')
+          .select('Username')
+          .eq('id', int.parse(currentUserId))
+          .single();
 
-      // Adicionar compartilhamento
-      print('Adicionando compartilhamento...');
-      await SupabaseService.client
-          .from('shared_lists')
-          .insert({
-            'list_id': int.parse(listId),
-            'user_id': int.parse(targetUserId),
-            'permission': 'edit',
-          });
+      final currentUsername = currentUserResponse['Username'];
 
-      print('Compartilhamento adicionado com sucesso');
+      // Criar convite usando NotificationService
+      await NotificationService.createInvitation(
+        listId: listId,
+        listName: listName,
+        inviterUsername: currentUsername,
+        invitedUsername: username.trim(),
+      );
+
+      print('Convite criado com sucesso');
       return true;
     } catch (error) {
-      print('Erro ao compartilhar lista: $error');
-      throw Exception('Erro ao compartilhar lista: $error');
+      print('Erro ao criar convite: $error');
+      throw Exception('Erro ao enviar convite: $error');
     }
   }
 

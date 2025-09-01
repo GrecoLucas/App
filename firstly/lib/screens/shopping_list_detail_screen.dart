@@ -89,7 +89,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       
       if (authProvider.isLoggedIn && authProvider.currentUser != null) {
         final userLists = await ListSharingService.loadUserLists(
-          authProvider.currentUser!['id'].toString(),
+          authProvider.currentUser!.id.toString(),
         );
         
         // Encontrar a lista específica pelo ID
@@ -229,7 +229,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             await ListSharingService.addItemToList(
               widget.shoppingList.id!,
               newItem,
-              addedByUserId: authProvider.currentUser?['id']?.toString(),
+              addedByUserId: authProvider.currentUser?.id.toString(),
             );
             
             print('Item adicionado com sucesso no Supabase');
@@ -494,7 +494,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                   await ListSharingService.addItemToList(
                     widget.shoppingList.id!,
                     item,
-                    addedByUserId: authProvider.currentUser?['id']?.toString(),
+                    addedByUserId: authProvider.currentUser?.id.toString(),
                   );
                 }
                 
@@ -569,7 +569,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             await ListSharingService.addItemToList(
               widget.shoppingList.id!,
               newItem,
-              addedByUserId: authProvider.currentUser?['id']?.toString(),
+              addedByUserId: authProvider.currentUser?.id.toString(),
             );
             
             // Adicionar localmente apenas após sucesso da sincronização
@@ -1084,7 +1084,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       context: context,
       builder: (context) => _ShareListDialog(
         shoppingList: widget.shoppingList,
-        currentUserId: authProvider.currentUser!['id'].toString(),
+        currentUserId: authProvider.currentUser!.id.toString(),
         onListShared: () {
           widget.onUpdate(); // Atualizar a tela principal
           setState(() {}); // Atualizar a tela atual

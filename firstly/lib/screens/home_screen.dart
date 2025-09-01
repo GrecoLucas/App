@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       // Só fazer polling se estiver logado
       if (authProvider.isLoggedIn && authProvider.currentUser != null) {
         final supabaseLists = await ListSharingService.loadUserLists(
-          authProvider.currentUser!['id'].toString(),
+          authProvider.currentUser!.id.toString(),
         );
         
         // Só atualizar se as listas mudaram
@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (authProvider.isLoggedIn && authProvider.currentUser != null) {
         try {
           final supabaseLists = await ListSharingService.loadUserLists(
-            authProvider.currentUser!['id'].toString(),
+            authProvider.currentUser!.id.toString(),
           );
           setState(() {
             shoppingLists = supabaseLists;
@@ -519,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       if (list.id != null) {
                         try {
                           final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                          final currentUserId = authProvider.currentUser?['id']?.toString();
+                          final currentUserId = authProvider.currentUser?.id.toString();
                           
                           if (currentUserId != null) {
                             // Atualizar apenas o nome da lista no Supabase
@@ -565,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void _deleteList(int index) async {
     final list = shoppingLists[index];
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId = authProvider.currentUser?['id']?.toString();
+    final currentUserId = authProvider.currentUser?.id.toString();
     
     if (currentUserId == null) return;
 
@@ -764,67 +764,79 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     builder: (context) => const HelpScreen(),
                   ),
                 );
-              },
-              tooltip: 'Como usar o app',
-            ),
-          ),
-          const SizedBox(width: AppConstants.paddingSmall),
-          // Botão de logout
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              return PopupMenuButton<String>(
-                icon: const Icon(Icons.person),
+                },
+                tooltip: 'Como usar o app',
+              ),
+              ),
+              const SizedBox(width: AppConstants.paddingSmall),
+              // Botão de logout
+              Consumer<AuthProvider>(
+              builder: (context, authProvider, child) {
+                return PopupMenuButton<String>(
+                icon: const Icon(Icons.person), // Apenas o ícone de pessoa, sem avatar/letra
                 onSelected: (value) {
                   if (value == 'logout') {
-                    _showLogoutDialog(authProvider);
+                  _showLogoutDialog(authProvider);
+                  } else if (value == 'profile') {
+                  Navigator.pushNamed(context, '/profile');
                   }
                 },
                 itemBuilder: (context) => [
                   PopupMenuItem(
-                    value: 'user_info',
-                    enabled: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Usuário:',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        Text(
-                          authProvider.currentUser?['Username'] ?? 'Usuário',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                  value: 'user_info',
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                    Text(
+                      'Usuário:',
+                      style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      ),
                     ),
+                    Text(
+                      authProvider.currentUser?.username ?? 'Usuário',
+                      style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    ],
+                  ),
                   ),
                   const PopupMenuDivider(),
                   const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout, size: 18),
-                        SizedBox(width: 8),
-                        Text('Sair'),
-                      ],
-                    ),
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                    Icon(Icons.settings, size: 18),
+                    SizedBox(width: 8),
+                    Text('Meu Perfil'),
+                    ],
+                  ),
+                  ),
+                  const PopupMenuItem(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                    Icon(Icons.logout, size: 18),
+                    SizedBox(width: 8),
+                    Text('Sair'),
+                    ],
+                  ),
                   ),
                 ],
-              );
-            },
-          ),
-          const SizedBox(width: AppConstants.paddingSmall),
-        ],
-        backgroundColor: Colors.white,
-        elevation: 0,
-        shadowColor: Colors.black12,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: Column(
+                );
+              },
+              ),
+              const SizedBox(width: AppConstants.paddingSmall),
+            ],
+            backgroundColor: Colors.white,
+            elevation: 0,
+            shadowColor: Colors.black12,
+            surfaceTintColor: Colors.transparent,
+            ),
+            body: Column(
         children: [
           _buildMainNavigationButtons(),
           Expanded(
@@ -1343,7 +1355,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context) => AlertDialog(
         title: const Text('Sair da conta'),
         content: Text(
-          'Tem certeza que deseja sair da conta "${authProvider.currentUser?['Username']}"?',
+          'Tem certeza que deseja sair da conta "${authProvider.currentUser?.username}"?',
         ),
         actions: [
           TextButton(
