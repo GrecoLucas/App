@@ -6,7 +6,10 @@ import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
 import '../services/list_sharing_service.dart';
 import '../services/supabase_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/offline_list_sync_service.dart';
 import '../widgets/list_sort_options_widget.dart';
+import '../widgets/connectivity_status_widget.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/auth_provider.dart';
 import 'shopping_list_detail_screen.dart';
@@ -70,16 +73,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Só fazer polling se estiver logado
-      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
-        final supabaseLists = await ListSharingService.loadUserLists(
+      // Só fazer polling se estiver logado e online
+      if (authProvider.isLoggedIn && 
+          authProvider.currentUser != null && 
+          ConnectivityService.isOnline) {
+        final syncedLists = await OfflineListSyncService.syncListsWhenOnline(
           authProvider.currentUser!.id.toString(),
         );
         
         // Só atualizar se as listas mudaram
-        if (mounted && _hasListsChanged(supabaseLists)) {
+        if (mounted && _hasListsChanged(syncedLists)) {
           setState(() {
-            shoppingLists = supabaseLists;
+            shoppingLists = syncedLists;
           });
           await _saveShoppingLists();
         }
@@ -133,18 +138,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Se estiver logado, carregar do Supabase
+      // Se estiver logado, usar sincronização offline/online
       if (authProvider.isLoggedIn && authProvider.currentUser != null) {
         try {
-          final supabaseLists = await ListSharingService.loadUserLists(
+          final syncedLists = await OfflineListSyncService.syncListsWhenOnline(
             authProvider.currentUser!.id.toString(),
           );
           setState(() {
-            shoppingLists = supabaseLists;
+            shoppingLists = syncedLists;
             _isLoading = false;
           });
         } catch (e) {
-          // Se der erro no Supabase, carregar localmente
+          // Se der erro na sincronização, carregar localmente
           final loadedLists = await StorageService.loadShoppingLists();
           setState(() {
             shoppingLists = loadedLists;
@@ -1107,6 +1112,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
           onTap: () {
+            // Verificar se a lista pode ser acessada offline
+            if (!ConnectivityService.isOnline && !OfflineListSyncService.isListAccessibleOffline(list)) {
+              // Mostrar dialog informando que a lista não pode ser acessada offline
+              _showSharedListOfflineDialog(list);
+              return;
+            }
+            
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1173,11 +1185,48 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        list.name,
-                        style: AppStyles.bodyLarge.copyWith(
-                          color: AppTheme.darkGreen,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              list.name,
+                              style: AppStyles.bodyLarge.copyWith(
+                                color: AppTheme.darkGreen,
+                              ),
+                            ),
+                          ),
+                          // Indicadores de status
+                          if (!ConnectivityService.isOnline && !OfflineListSyncService.isListAccessibleOffline(list))
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.wifi_off,
+                                    size: 12,
+                                    color: Colors.red[700],
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'Indisponível',
+                                    style: TextStyle(
+                                      color: Colors.red[700],
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else if (list.isOfflineOnly == true)
+                            OfflineListIndicator(isOffline: true),
+                        ],
                       ),
                       const SizedBox(height: AppConstants.paddingSmall),
                       Row(
@@ -1372,6 +1421,86 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               foregroundColor: Colors.white,
             ),
             child: const Text('Sair'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Mostra dialog informando que lista compartilhada não pode ser acessada offline
+  void _showSharedListOfflineDialog(ShoppingList list) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              ),
+              child: const Icon(
+                Icons.wifi_off,
+                color: Colors.orange,
+              ),
+            ),
+            const SizedBox(width: AppConstants.paddingMedium),
+            const Expanded(
+              child: Text(
+                'Lista Indisponível',
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'A lista "${list.name}" está compartilhada e não pode ser acessada sem conexão com a internet.',
+              style: AppStyles.bodyMedium,
+            ),
+            const SizedBox(height: AppConstants.paddingMedium),
+            Container(
+              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline,
+                    color: Colors.blue,
+                    size: AppConstants.iconSmall,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Conecte-se à internet para acessar e editar listas compartilhadas.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Entendido'),
           ),
         ],
       ),

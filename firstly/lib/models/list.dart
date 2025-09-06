@@ -19,6 +19,7 @@ class ShoppingList {
   String? ownerId; // ID do usuário proprietário
   bool isShared; // Se a lista está compartilhada
   List<String>? sharedWith; // Lista de usernames com acesso
+  bool? isOfflineOnly; // Se a lista é apenas offline
 
   ShoppingList({
     required this.name,
@@ -29,6 +30,7 @@ class ShoppingList {
     this.ownerId,
     this.isShared = false,
     this.sharedWith,
+    this.isOfflineOnly,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Calcula o total da lista considerando a quantidade
@@ -143,8 +145,12 @@ class ShoppingList {
       'ownerId': ownerId,
       'isShared': isShared,
       'sharedWith': sharedWith,
+      'isOfflineOnly': isOfflineOnly,
     };
   }
+
+  // Método para converter a lista para JSON
+  Map<String, dynamic> toJson() => toMap();
 
   // Método para criar uma ShoppingList a partir de um Map
   factory ShoppingList.fromMap(Map<String, dynamic> map) {
@@ -159,8 +165,12 @@ class ShoppingList {
       ownerId: map['ownerId']?.toString(),
       isShared: map['isShared'] ?? false,
       sharedWith: map['sharedWith'] != null ? List<String>.from(map['sharedWith']) : null,
+      isOfflineOnly: map['isOfflineOnly'],
     );
   }
+
+  // Método para criar uma ShoppingList a partir de JSON
+  factory ShoppingList.fromJson(Map<String, dynamic> json) => ShoppingList.fromMap(json);
 
   // Cria uma cópia da lista com itens resetados (quantidade 1, preço 0)
   ShoppingList copyAsTemplate({

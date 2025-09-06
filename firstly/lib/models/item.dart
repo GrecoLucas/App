@@ -30,6 +30,9 @@ class Item {
     };
   }
 
+  // Método para converter o item para JSON
+  Map<String, dynamic> toJson() => toMap();
+
   // Método para criar um Item a partir de um Map
   factory Item.fromMap(Map<String, dynamic> map) {
     return Item(
@@ -42,4 +45,7 @@ class Item {
       supabaseId: map['supabaseId'],
     );
   }
+
+  // Método para criar um Item a partir de JSON
+  factory Item.fromJson(Map<String, dynamic> json) => Item.fromMap(json);
 }

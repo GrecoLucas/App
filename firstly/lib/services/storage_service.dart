@@ -86,4 +86,32 @@ class StorageService {
       print('Erro ao limpar preferência de ordenação: $e');
     }
   }
+
+  /// Salva qualquer dado nas preferências (método genérico)
+  static Future<void> saveToPrefs(String key, dynamic data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = jsonEncode(data);
+      await prefs.setString(key, jsonString);
+    } catch (e) {
+      print('Erro ao salvar $key: $e');
+    }
+  }
+
+  /// Carrega qualquer dado das preferências (método genérico)
+  static Future<dynamic> loadFromPrefs(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(key);
+      
+      if (jsonString == null) {
+        return null;
+      }
+
+      return jsonDecode(jsonString);
+    } catch (e) {
+      print('Erro ao carregar $key: $e');
+      return null;
+    }
+  }
 }

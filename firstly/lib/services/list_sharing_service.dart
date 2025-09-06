@@ -494,4 +494,25 @@ class ListSharingService {
       return false;
     }
   }
+
+  // Atualiza uma lista no Supabase
+  static Future<void> updateList(String listId, String name, double? budget) async {
+    try {
+      final updateData = <String, dynamic>{
+        'name': name,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+
+      if (budget != null) {
+        updateData['budget'] = budget;
+      }
+
+      await SupabaseService.client
+          .from('shopping_lists')
+          .update(updateData)
+          .eq('id', int.parse(listId));
+    } catch (error) {
+      throw Exception('Erro ao atualizar lista: $error');
+    }
+  }
 }

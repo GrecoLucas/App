@@ -11,6 +11,7 @@ import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
 import '../services/list_sharing_service.dart';
+import '../services/connectivity_service.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/auth_provider.dart';
 import 'barcode_scanner_screen.dart';
@@ -952,19 +953,38 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 ),
                 const SizedBox(width: AppConstants.paddingSmall),
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _shareList,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF9C27B0),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  child: Tooltip(
+                    message: ConnectivityService.isOnline 
+                      ? 'Compartilhar esta lista com outros usuários'
+                      : 'Conecte-se à internet para compartilhar',
+                    child: ElevatedButton.icon(
+                      onPressed: ConnectivityService.isOnline ? _shareList : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: ConnectivityService.isOnline 
+                          ? const Color(0xFF9C27B0) 
+                          : Colors.grey[300],
+                        foregroundColor: ConnectivityService.isOnline 
+                          ? Colors.white 
+                          : Colors.grey[600],
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                        ),
+                        elevation: ConnectivityService.isOnline ? 2 : 0,
                       ),
-                      elevation: 2,
+                      icon: Icon(
+                        ConnectivityService.isOnline ? Icons.share : Icons.wifi_off, 
+                        size: 18
+                      ),
+                      label: Text(
+                        ConnectivityService.isOnline ? 'Compartilhar' : 'Offline',
+                        style: TextStyle(
+                          fontWeight: ConnectivityService.isOnline 
+                            ? FontWeight.w600 
+                            : FontWeight.w400,
+                        ),
+                      ),
                     ),
-                    icon: const Icon(Icons.share, size: 18),
-                    label: const Text('Compartilhar'),
                   ),
                 ),
               ],
