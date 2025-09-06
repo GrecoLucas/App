@@ -6,6 +6,8 @@ class Item {
   bool isCompleted;
   String? addedBy; // ID do usuário que adicionou o item
   String? supabaseId; // ID do item no Supabase (diferente do ID local)
+  int version; // Versão para controle optimistic
+  DateTime lastModified; // Timestamp da última modificação
 
   Item({
     String? id,
@@ -15,7 +17,10 @@ class Item {
     this.isCompleted = false,
     this.addedBy,
     this.supabaseId,
-  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+    this.version = 1,
+    DateTime? lastModified,
+  }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+       lastModified = lastModified ?? DateTime.now();
 
   // Método para converter o item para Map (útil para persistência futura)
   Map<String, dynamic> toMap() {
@@ -27,6 +32,8 @@ class Item {
       'isCompleted': isCompleted,
       'addedBy': addedBy,
       'supabaseId': supabaseId,
+      'version': version,
+      'lastModified': lastModified.toIso8601String(),
     };
   }
 
@@ -43,9 +50,33 @@ class Item {
       isCompleted: map['isCompleted'] ?? false,
       addedBy: map['addedBy'],
       supabaseId: map['supabaseId'],
+      version: map['version']?.toInt() ?? 1,
+      lastModified: map['lastModified'] != null 
+          ? DateTime.parse(map['lastModified'])
+          : DateTime.now(),
     );
   }
 
   // Método para criar um Item a partir de JSON
   factory Item.fromJson(Map<String, dynamic> json) => Item.fromMap(json);
+  
+  // Método para criar uma cópia do item incrementando a versão
+  Item copyWithNewVersion({
+    String? name,
+    double? price,
+    int? quantity,
+    bool? isCompleted,
+  }) {
+    return Item(
+      id: id,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      quantity: quantity ?? this.quantity,
+      isCompleted: isCompleted ?? this.isCompleted,
+      addedBy: addedBy,
+      supabaseId: supabaseId,
+      version: version + 1,
+      lastModified: DateTime.now(),
+    );
+  }
 }

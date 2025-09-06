@@ -1,5 +1,6 @@
 import '../models/list.dart';
 import '../models/item.dart';
+import '../exceptions/conflict_exception.dart';
 import 'supabase_service.dart';
 import 'notification_service.dart';
 
@@ -57,6 +58,7 @@ class ListSharingService {
           'quantity': item.quantity,
           'is_completed': item.isCompleted,
           'added_by': int.parse(userId),
+          'version': item.version,
           'created_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         }).toList();
@@ -152,7 +154,7 @@ class ListSharingService {
           .from('shopping_lists')
           .select('''
             id, name, owner_id, created_at, updated_at,
-            shopping_items(*)
+            shopping_items(*, version, last_modified)
           ''')
           .eq('owner_id', int.parse(userId))
           .order('created_at', ascending: false);
@@ -164,7 +166,7 @@ class ListSharingService {
             permission,
             shopping_lists!inner(
               id, name, owner_id, created_at, updated_at,
-              shopping_items(*)
+              shopping_items(*, version, last_modified)
             )
           ''')
           .eq('user_id', int.parse(userId));
@@ -181,6 +183,10 @@ class ListSharingService {
                   isCompleted: itemData['is_completed'] ?? false,
                   addedBy: itemData['added_by']?.toString(),
                   supabaseId: itemData['id']?.toString(),
+                  version: itemData['version'] ?? 1,
+                  lastModified: itemData['last_modified'] != null
+                      ? DateTime.parse(itemData['last_modified'])
+                      : DateTime.now(),
                 ))
             .toList();
 
@@ -213,6 +219,10 @@ class ListSharingService {
                   isCompleted: itemData['is_completed'] ?? false,
                   addedBy: itemData['added_by']?.toString(),
                   supabaseId: itemData['id']?.toString(),
+                  version: itemData['version'] ?? 1,
+                  lastModified: itemData['last_modified'] != null
+                      ? DateTime.parse(itemData['last_modified'])
+                      : DateTime.now(),
                 ))
             .toList();
 
@@ -232,75 +242,160 @@ class ListSharingService {
     }
   }
 
-  // Adicionar item à lista (funciona para listas próprias e compartilhadas)
-  static Future<void> addItemToList(String listId, Item item, {String? addedByUserId}) async {
+  // Adicionar item à lista (funciona para listas próprias e compartilhadas) com controle atômico
+  static Future<void> addItemToListAtomic(String listId, Item item, {String? addedByUserId}) async {
     try {
-      print('addItemToList - Iniciando...');
+      print('addItemToListAtomic - Iniciando...');
       print('Lista ID: $listId');
       print('Item: ${item.name}');
       print('Adicionado por: $addedByUserId');
       
       final itemData = {
-        'list_id': int.parse(listId),
         'name': item.name,
         'price': item.price,
         'quantity': item.quantity,
         'is_completed': item.isCompleted,
-        'added_by': addedByUserId != null ? int.parse(addedByUserId) : null,
-        'created_at': DateTime.now().toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
       };
       
       print('Dados do item: $itemData');
       
-      final response = await SupabaseService.client
-          .from('shopping_items')
-          .insert(itemData)
-          .select()
-          .single();
+      final response = await SupabaseService.client.rpc(
+        'add_item_atomic',
+        params: {
+          'p_list_id': int.parse(listId),
+          'p_item_data': itemData,
+          'p_user_id': addedByUserId != null ? int.parse(addedByUserId) : null,
+        },
+      );
       
       print('Resposta do Supabase: $response');
       
-      // Atualizar o item com o ID do Supabase
+      // Atualizar o item com o ID e versão do Supabase
       item.supabaseId = response['id'].toString();
+      item.version = response['version'];
+      item.lastModified = DateTime.parse(response['last_modified']);
       
-      print('Item salvo com sucesso! Supabase ID: ${item.supabaseId}');
+      print('Item salvo com sucesso! Supabase ID: ${item.supabaseId}, Versão: ${item.version}');
     } catch (error) {
       print('Erro ao adicionar item: $error');
+      if (error.toString().contains('Item similar já existe')) {
+        throw ConflictException(
+          'Item similar já existe na lista',
+          type: ConflictType.duplicate,
+        );
+      }
       throw Exception('Erro ao adicionar item: $error');
     }
   }
 
-  // Atualizar item na lista
-  static Future<void> updateItemInList(String listId, String itemSupabaseId, Item item) async {
+  // Atualizar item na lista com controle de versão optimistic usando função atômica
+  static Future<void> updateItemInListAtomic(String listId, String itemSupabaseId, Item item) async {
     try {
-      await SupabaseService.client
-          .from('shopping_items')
-          .update({
-            'name': item.name,
-            'price': item.price,
-            'quantity': item.quantity,
-            'is_completed': item.isCompleted,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', int.parse(itemSupabaseId))
-          .eq('list_id', int.parse(listId));
+      print('updateItemInListAtomic - Iniciando com controle de versão...');
+      print('Lista ID: $listId, Item ID: $itemSupabaseId');
+      print('Versão atual: ${item.version}');
+      
+      final itemData = {
+        'name': item.name,
+        'price': item.price,
+        'quantity': item.quantity,
+        'is_completed': item.isCompleted,
+      };
+      
+      final response = await SupabaseService.client.rpc(
+        'update_item_atomic',
+        params: {
+          'p_item_id': int.parse(itemSupabaseId),
+          'p_list_id': int.parse(listId),
+          'p_current_version': item.version,
+          'p_item_data': itemData,
+        },
+      );
+      
+      if (response['conflict'] == true) {
+        print('Conflito de versão detectado!');
+        
+        final currentData = response['current_data'];
+        final remoteItem = Item(
+          name: currentData['name'],
+          price: (currentData['price'] ?? 0.0).toDouble(),
+          quantity: currentData['quantity'] ?? 1,
+          isCompleted: currentData['is_completed'] ?? false,
+          supabaseId: currentData['id'].toString(),
+          version: currentData['version'] ?? 1,
+          lastModified: currentData['last_modified'] != null
+              ? DateTime.parse(currentData['last_modified'])
+              : DateTime.now(),
+        );
+        
+        throw ConflictException(
+          'Item foi modificado por outro usuário',
+          localData: item,
+          remoteData: remoteItem,
+          type: ConflictType.version,
+        );
+      }
+      
+      if (response['updated'] == true) {
+        // Atualizar a versão local do item
+        item.version = response['version'];
+        item.lastModified = DateTime.parse(response['last_modified']);
+        
+        print('Item atualizado com sucesso! Nova versão: ${item.version}');
+      }
     } catch (error) {
+      if (error is ConflictException) {
+        rethrow;
+      }
+      print('Erro ao atualizar item: $error');
       throw Exception('Erro ao atualizar item: $error');
     }
   }
 
-  // Remover item da lista
-  static Future<void> removeItemFromList(String listId, String itemSupabaseId) async {
+  // Remover item da lista com verificação atômica
+  static Future<void> removeItemFromListAtomic(String listId, String itemSupabaseId) async {
     try {
-      await SupabaseService.client
-          .from('shopping_items')
-          .delete()
-          .eq('id', int.parse(itemSupabaseId))
-          .eq('list_id', int.parse(listId));
+      print('removeItemFromListAtomic - Iniciando...');
+      print('Lista ID: $listId, Item ID: $itemSupabaseId');
+      
+      final response = await SupabaseService.client.rpc(
+        'delete_item_atomic',
+        params: {
+          'p_item_id': int.parse(itemSupabaseId),
+          'p_list_id': int.parse(listId),
+        },
+      );
+      
+      if (response['conflict'] == true) {
+        print('Item já foi removido por outro usuário');
+        throw ConflictException(
+          response['message'] ?? 'Item já foi removido por outro usuário',
+          type: ConflictType.deleted,
+        );
+      }
+      
+      if (response['deleted'] == true) {
+        print('Item removido com sucesso');
+      }
     } catch (error) {
+      if (error is ConflictException) {
+        rethrow;
+      }
       throw Exception('Erro ao remover item: $error');
     }
+  }
+
+  // Métodos legados para compatibilidade - redirecionam para versões atômicas
+  static Future<void> addItemToList(String listId, Item item, {String? addedByUserId}) async {
+    return addItemToListAtomic(listId, item, addedByUserId: addedByUserId);
+  }
+  
+  static Future<void> updateItemInList(String listId, String itemSupabaseId, Item item) async {
+    return updateItemInListAtomic(listId, itemSupabaseId, item);
+  }
+  
+  static Future<void> removeItemFromList(String listId, String itemSupabaseId) async {
+    return removeItemFromListAtomic(listId, itemSupabaseId);
   }
 
   // Obter lista específica com seus itens
@@ -316,7 +411,7 @@ class ListSharingService {
       // Buscar os itens da lista
       final itemsResponse = await SupabaseService.client
           .from('shopping_items')
-          .select()
+          .select('*, version, last_modified')
           .eq('list_id', int.parse(listId));
 
       // Converter os itens
@@ -327,6 +422,10 @@ class ListSharingService {
         isCompleted: itemData['is_completed'] ?? false,
         addedBy: itemData['added_by']?.toString(),
         supabaseId: itemData['id'].toString(),
+        version: itemData['version'] ?? 1,
+        lastModified: itemData['last_modified'] != null
+            ? DateTime.parse(itemData['last_modified'])
+            : DateTime.now(),
       )).toList();
 
       // Converter a lista
