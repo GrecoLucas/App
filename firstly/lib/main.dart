@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/connectivity_status_widget.dart';
 import 'utils/app_theme.dart';
@@ -14,6 +15,9 @@ import 'screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Carregar variáveis de ambiente
+  await dotenv.load();
   
   // Inicializar Supabase
   await SupabaseService.initialize();
