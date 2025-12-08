@@ -15,22 +15,12 @@ class ShoppingList {
   List<Item> items;
   DateTime createdAt;
   double? budget; // Orçamento opcional da lista
-  String? id; // ID único da lista no Supabase
-  String? ownerId; // ID do usuário proprietário
-  bool isShared; // Se a lista está compartilhada
-  List<String>? sharedWith; // Lista de usernames com acesso
-  bool? isOfflineOnly; // Se a lista é apenas offline
 
   ShoppingList({
     required this.name,
     required this.items,
     DateTime? createdAt,
     this.budget,
-    this.id,
-    this.ownerId,
-    this.isShared = false,
-    this.sharedWith,
-    this.isOfflineOnly,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Calcula o total da lista considerando a quantidade
@@ -141,11 +131,6 @@ class ShoppingList {
       'items': items.map((item) => item.toMap()).toList(),
       'createdAt': createdAt.millisecondsSinceEpoch,
       'budget': budget,
-      'id': id,
-      'ownerId': ownerId,
-      'isShared': isShared,
-      'sharedWith': sharedWith,
-      'isOfflineOnly': isOfflineOnly,
     };
   }
 
@@ -161,11 +146,6 @@ class ShoppingList {
       ),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
       budget: map['budget']?.toDouble(),
-      id: map['id']?.toString(),
-      ownerId: map['ownerId']?.toString(),
-      isShared: map['isShared'] ?? false,
-      sharedWith: map['sharedWith'] != null ? List<String>.from(map['sharedWith']) : null,
-      isOfflineOnly: map['isOfflineOnly'],
     );
   }
 

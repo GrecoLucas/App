@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../utils/app_theme.dart';
-import '../widgets/favorite_item_image.dart';
+
 
 class FavoriteItemsScreen extends StatefulWidget {
   const FavoriteItemsScreen({super.key});
@@ -453,12 +453,7 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
           padding: const EdgeInsets.all(AppConstants.paddingMedium),
           child: Row(
             children: [
-              FavoriteItemImage(
-                imagePath: item.imagePath,
-                width: 56,
-                height: 56,
-                borderRadius: AppConstants.radiusMedium,
-              ),
+              _buildDefaultIcon(),
               const SizedBox(width: AppConstants.paddingMedium),
               Expanded(
                 child: Column(

@@ -4,14 +4,11 @@ import 'dart:async';
 import '../models/list.dart';
 import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
-import '../services/list_sharing_service.dart';
-import '../services/supabase_service.dart';
-import '../services/connectivity_service.dart';
-import '../services/offline_list_sync_service.dart';
+import '../models/list.dart';
+import '../utils/app_theme.dart';
+import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
-import '../widgets/connectivity_status_widget.dart';
 import '../providers/app_settings_provider.dart';
-import '../providers/auth_provider.dart';
 import 'shopping_list_detail_screen.dart';
 import 'favorite_items_screen.dart';
 import 'settings_screen.dart';
@@ -50,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     _loadShoppingLists();
-    _startPolling();
+    // _startPolling();
   }
 
   @override
@@ -60,110 +57,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  // Inicia o polling para atualizar as listas automaticamente
-  void _startPolling() {
-    // Desabilitar polling temporariamente para evitar conflitos
-    // _pollingTimer = Timer.periodic(_pollingInterval, (timer) {
-    //   _refreshListsFromSupabase();
-    // });
-  }
-
-  // Atualiza as listas do Supabase sem mostrar loading
-  Future<void> _refreshListsFromSupabase() async {
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      // Só fazer polling se estiver logado e online
-      if (authProvider.isLoggedIn && 
-          authProvider.currentUser != null && 
-          ConnectivityService.isOnline) {
-        final syncedLists = await OfflineListSyncService.syncListsWhenOnline(
-          authProvider.currentUser!.id.toString(),
-        );
-        
-        // Só atualizar se as listas mudaram
-        if (mounted && _hasListsChanged(syncedLists)) {
-          setState(() {
-            shoppingLists = syncedLists;
-          });
-          await _saveShoppingLists();
-        }
-      }
-    } catch (e) {
-      // Falhar silenciosamente durante o polling
-      print('Erro no polling: $e');
-    }
-  }
-
-  // Verifica se as listas mudaram
-  bool _hasListsChanged(List<ShoppingList> newLists) {
-    if (newLists.length != shoppingLists.length) return true;
-    
-    for (int i = 0; i < newLists.length; i++) {
-      final newList = newLists[i];
-      final oldList = shoppingLists[i];
-      
-      if (newList.name != oldList.name ||
-          newList.items.length != oldList.items.length ||
-          newList.isShared != oldList.isShared) {
-        return true;
-      }
-      
-      // Verificar se os itens mudaram
-      for (int j = 0; j < newList.items.length; j++) {
-        if (j >= oldList.items.length) return true;
-        
-        final newItem = newList.items[j];
-        final oldItem = oldList.items[j];
-        
-        if (newItem.name != oldItem.name ||
-            newItem.price != oldItem.price ||
-            newItem.quantity != oldItem.quantity ||
-            newItem.isCompleted != oldItem.isCompleted) {
-          return true;
-        }
-      }
-    }
-    
-    return false;
-  }
-
-  // Função para o pull-to-refresh
-  Future<void> _handleRefresh() async {
-    await _refreshListsFromSupabase();
-  }
-
-  // Carrega as listas salvas do armazenamento local e do Supabase
+  // Carrega as listas salvas do armazenamento local
   Future<void> _loadShoppingLists() async {
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      // Se estiver logado, usar sincronização offline/online
-      if (authProvider.isLoggedIn && authProvider.currentUser != null) {
-        try {
-          final syncedLists = await OfflineListSyncService.syncListsWhenOnline(
-            authProvider.currentUser!.id.toString(),
-          );
-          setState(() {
-            shoppingLists = syncedLists;
-            _isLoading = false;
-          });
-        } catch (e) {
-          // Se der erro na sincronização, carregar localmente
-          final loadedLists = await StorageService.loadShoppingLists();
-          setState(() {
-            shoppingLists = loadedLists;
-            _isLoading = false;
-          });
-        }
-      } else {
-        // Se não estiver logado, carregar apenas localmente
-        final loadedLists = await StorageService.loadShoppingLists();
-        setState(() {
-          shoppingLists = loadedLists;
-          _isLoading = false;
-        });
-      }
+      final loadedLists = await StorageService.loadShoppingLists();
+      setState(() {
+        shoppingLists = loadedLists;
+        _isLoading = false;
+      });
       
       // Aplica a ordenação padrão
       _sortLists(_currentListSortCriteria);
@@ -173,6 +74,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     }
   }
+
+  // Função para o pull-to-refresh
+  Future<void> _handleRefresh() async {
+    await _loadShoppingLists();
+  }
+
+
 
   // Salva as listas no armazenamento local
   Future<void> _saveShoppingLists() async {
@@ -520,27 +428,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       
                       await _saveShoppingLists();
                       
-                      // Se a lista tem ID do Supabase, tentar atualizar o nome lá também
-                      if (list.id != null) {
-                        try {
-                          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                          final currentUserId = authProvider.currentUser?.id.toString();
-                          
-                          if (currentUserId != null) {
-                            // Atualizar apenas o nome da lista no Supabase
-                            await SupabaseService.client
-                                .from('shopping_lists')
-                                .update({
-                                  'name': list.name,
-                                  'updated_at': DateTime.now().toIso8601String(),
-                                })
-                                .eq('id', int.parse(list.id!));
-                          }
-                        } catch (e) {
-                          // Se der erro no Supabase, continuar com a atualização local
-                          print('Erro ao atualizar lista no Supabase: $e');
-                        }
-                      }
+                      await _saveShoppingLists();
                       
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -569,40 +457,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // Remove uma lista de compras
   void _deleteList(int index) async {
     final list = shoppingLists[index];
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final currentUserId = authProvider.currentUser?.id.toString();
-    
-    if (currentUserId == null) return;
 
-    bool isOwner = false;
-    String actionText = 'sair da lista compartilhada';
-    String confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
     
-    // Verificar se é o dono da lista
-    if (list.id != null) {
-      // Lista tem ID do Supabase, verificar propriedade
-      try {
-        isOwner = await ListSharingService.isListOwner(list.id!, currentUserId);
-        if (isOwner) {
-          actionText = 'excluir a lista';
-          confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação irá remover a lista da base de dados e não pode ser desfeita.';
-        } else {
-          actionText = 'sair da lista compartilhada';
-          confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
-        }
-      } catch (error) {
-        // Em caso de erro, assumir que não é o dono
-        print('Erro ao verificar propriedade da lista: $error');
-        isOwner = false;
-        actionText = 'sair da lista compartilhada';
-        confirmText = 'Tem certeza que deseja sair da lista "${list.name}"?';
-      }
-    } else {
-      // Lista local (sem ID do Supabase), sempre pode excluir
-      isOwner = true;
-      actionText = 'excluir a lista';
-      confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação não pode ser desfeita.';
-    }
+    String actionText = 'excluir a lista';
+    String confirmText = 'Tem certeza que deseja excluir a lista "${list.name}"? Esta ação não pode ser desfeita.';
     
     showDialog(
       context: context,
@@ -620,12 +478,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
                 ),
                 child: Icon(
-                  isOwner ? Icons.delete_outline : Icons.exit_to_app,
+                  Icons.delete_outline,
                   color: AppTheme.warningRed,
                 ),
               ),
               const SizedBox(width: AppConstants.paddingMedium),
-              Text(isOwner ? 'Excluir Lista' : 'Sair da Lista'),
+              Text('Excluir Lista'),
             ],
           ),
           content: Text(
@@ -640,18 +498,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  // Se a lista tem ID do Supabase, deletar/sair do Supabase
-                  if (list.id != null) {
-                    if (isOwner) {
-                      // Dono da lista: deletar completamente do Supabase
-                      print('Deletando lista do Supabase - ID: ${list.id}, Owner: $isOwner');
-                      await ListSharingService.deleteList(list.id!, currentUserId);
-                    } else {
-                      // Convidado: apenas sair da lista compartilhada
-                      print('Saindo da lista compartilhada - ID: ${list.id}');
-                      await ListSharingService.leaveSharedList(list.id!, currentUserId);
-                    }
-                  }
+                  // Remover da lista local
                   
                   // Remover da lista local
                   setState(() {
@@ -663,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(isOwner ? 'Lista excluída com sucesso' : 'Você saiu da lista compartilhada'),
+                      content: Text('Lista excluída com sucesso'),
                       backgroundColor: AppTheme.primaryGreen,
                     ),
                   );
@@ -681,7 +528,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 backgroundColor: AppTheme.warningRed,
                 foregroundColor: Colors.white,
               ),
-              child: Text(isOwner ? 'Excluir' : 'Sair'),
+              child: Text('Excluir'),
             ),
           ],
         );
@@ -772,67 +619,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 },
                 tooltip: 'Como usar o app',
               ),
-              ),
-              const SizedBox(width: AppConstants.paddingSmall),
-              // Botão de logout
-              Consumer<AuthProvider>(
-              builder: (context, authProvider, child) {
-                return PopupMenuButton<String>(
-                icon: const Icon(Icons.person), // Apenas o ícone de pessoa, sem avatar/letra
-                onSelected: (value) {
-                  if (value == 'logout') {
-                  _showLogoutDialog(authProvider);
-                  } else if (value == 'profile') {
-                  Navigator.pushNamed(context, '/profile');
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                  value: 'user_info',
-                  enabled: false,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    Text(
-                      'Usuário:',
-                      style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                      ),
-                    ),
-                    Text(
-                      authProvider.currentUser?.username ?? 'Usuário',
-                      style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    ],
-                  ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                    Icon(Icons.settings, size: 18),
-                    SizedBox(width: 8),
-                    Text('Meu Perfil'),
-                    ],
-                  ),
-                  ),
-                  const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                    Icon(Icons.logout, size: 18),
-                    SizedBox(width: 8),
-                    Text('Sair'),
-                    ],
-                  ),
-                  ),
-                ],
-                );
-              },
               ),
               const SizedBox(width: AppConstants.paddingSmall),
             ],
@@ -1112,13 +898,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: InkWell(
           borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
           onTap: () {
-            // Verificar se a lista pode ser acessada offline
-            if (!ConnectivityService.isOnline && !OfflineListSyncService.isListAccessibleOffline(list)) {
-              // Mostrar dialog informando que a lista não pode ser acessada offline
-              _showSharedListOfflineDialog(list);
-              return;
-            }
-            
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -1150,33 +929,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         color: Colors.white,
                         size: AppConstants.iconMedium,
                       ),
-                      // Contador de pessoas com acesso (apenas para listas com ID)
-                      if (list.id != null)
-                        FutureBuilder<int>(
-                          future: ListSharingService.getListAccessCount(list.id!),
-                          builder: (context, snapshot) {
-                            final accessCount = snapshot.data ?? 1;
-                            if (accessCount > 1) {
-                              return Container(
-                                margin: const EdgeInsets.only(top: 2),
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  '$accessCount',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
                     ],
                   ),
                 ),
@@ -1195,37 +947,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ),
                           ),
-                          // Indicadores de status
-                          if (!ConnectivityService.isOnline && !OfflineListSyncService.isListAccessibleOffline(list))
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.red.withOpacity(0.3)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.wifi_off,
-                                    size: 12,
-                                    color: Colors.red[700],
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    'Indisponível',
-                                    style: TextStyle(
-                                      color: Colors.red[700],
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if (list.isOfflineOnly == true)
-                            OfflineListIndicator(isOffline: true),
                         ],
                       ),
                       const SizedBox(height: AppConstants.paddingSmall),
@@ -1397,35 +1118,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Exibe diálogo de confirmação para logout
-  void _showLogoutDialog(AuthProvider authProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sair da conta'),
-        content: Text(
-          'Tem certeza que deseja sair da conta "${authProvider.currentUser?.username}"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await authProvider.signOut();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Sair'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   // Mostra dialog informando que lista compartilhada não pode ser acessada offline
   void _showSharedListOfflineDialog(ShoppingList list) {

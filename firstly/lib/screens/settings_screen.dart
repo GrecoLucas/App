@@ -7,7 +7,7 @@ import '../services/favorite_items_service.dart';
 import '../services/app_settings_service.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/app_theme.dart';
-import '../widgets/favorite_item_image.dart';
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -441,11 +441,18 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
         padding: const EdgeInsets.all(AppConstants.paddingMedium),
         child: Row(
           children: [
-            FavoriteItemImage(
-              imagePath: item.imagePath,
+            Container(
               width: 56,
               height: 56,
-              borderRadius: AppConstants.radiusMedium,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+              ),
+              child: Icon(
+                Icons.shopping_bag_outlined,
+                color: AppTheme.primaryGreen,
+                size: 28,
+              ),
             ),
             const SizedBox(width: AppConstants.paddingMedium),
             Expanded(

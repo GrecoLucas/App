@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../utils/app_theme.dart';
-import 'favorite_item_image.dart';
+
 
 class FavoriteItemsDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onItemSelected;
@@ -265,11 +265,18 @@ class _FavoriteItemsDialogState extends State<FavoriteItemsDialog> {
             padding: EdgeInsets.all(AppConstants.paddingMedium),
             child: Row(
               children: [
-                FavoriteItemImage(
-                  imagePath: item.imagePath,
+                Container(
                   width: 48,
                   height: 48,
-                  borderRadius: AppConstants.radiusSmall,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  ),
+                  child: const Icon(
+                    Icons.shopping_basket,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
                 SizedBox(width: AppConstants.paddingMedium),
                 Expanded(

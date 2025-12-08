@@ -85,7 +85,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       name: productName.trim(),
       defaultPrice: price,
       defaultQuantity: selectedQuantity,
-      imagePath: null, // Sempre sem imagem
+
     );
     
     if (kDebugMode) {

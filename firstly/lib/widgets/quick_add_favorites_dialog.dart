@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../utils/app_theme.dart';
-import 'favorite_item_image.dart';
+
 
 class QuickAddFavoritesDialog extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onItemsSelected;
@@ -256,11 +256,18 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
                       activeColor: AppTheme.primaryGreen,
                     ),
                     SizedBox(width: AppConstants.paddingSmall),
-                    FavoriteItemImage(
-                      imagePath: item.imagePath,
+                    Container(
                       width: 40,
                       height: 40,
-                      borderRadius: AppConstants.radiusSmall,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                      ),
+                      child: const Icon(
+                        Icons.shopping_basket,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                     SizedBox(width: AppConstants.paddingMedium),
                     Expanded(
