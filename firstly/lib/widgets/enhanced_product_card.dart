@@ -14,7 +14,10 @@ class EnhancedProductCard extends StatefulWidget {
     required this.item,
     required this.onEdit,
     required this.onDelete,
+    this.onToggle,
   });
+
+  final VoidCallback? onToggle;
 
   @override
   State<EnhancedProductCard> createState() => _EnhancedProductCardState();
@@ -22,7 +25,6 @@ class EnhancedProductCard extends StatefulWidget {
 
 class _EnhancedProductCardState extends State<EnhancedProductCard> {
   bool _isFavorite = false;
-  bool _isInCart = false;
 
   @override
   void initState() {
@@ -87,33 +89,35 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
       ),
       child: Material(
         color: Colors.transparent,
-        child: Padding(
-          padding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  // Checkbox para indicar se está no carrinho
-                  Transform.scale(
-                    scale: isSmallScreen ? 1.0 : 1.2,
-                    child: Checkbox(
-                      value: _isInCart,
-                      onChanged: (bool? value) {
-                        setState(() {
-                          _isInCart = value ?? false;
-                        });
-                      },
-                      activeColor: AppTheme.primaryGreen,
-                      checkColor: Colors.white,
-                      side: BorderSide(
-                        color: AppTheme.primaryGreen.withOpacity(0.6),
-                        width: 2,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
+        child: Opacity(
+          opacity: widget.item.isCompleted ? 0.6 : 1.0,
+          child: Padding(
+            padding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    // Checkbox para indicar se está no carrinho
+                    Transform.scale(
+                      scale: isSmallScreen ? 1.0 : 1.2,
+                      child: Checkbox(
+                        value: widget.item.isCompleted,
+                        onChanged: (bool? value) {
+                          if (widget.onToggle != null) {
+                            widget.onToggle!();
+                          }
+                        },
+                        activeColor: AppTheme.primaryGreen,
+                        checkColor: Colors.white,
+                        side: BorderSide(
+                          color: AppTheme.primaryGreen.withOpacity(0.6),
+                          width: 2,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                       ),
                     ),
-                  ),
                   SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)),
                   Container(
                     width: isSmallScreen ? 50 : 60,
@@ -294,6 +298,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                 ],
               ),
             ],
+          ),
           ),
         ),
       ),

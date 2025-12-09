@@ -19,6 +19,31 @@ class SortOptionsWidget extends StatelessWidget {
       onSelected: onSortChanged,
       itemBuilder: (BuildContext context) => [
         PopupMenuItem<SortCriteria>(
+          value: SortCriteria.smart,
+          child: Row(
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: currentCriteria == SortCriteria.smart 
+                    ? Theme.of(context).primaryColor 
+                    : null,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Padrão (Pendentes primeiro)',
+                style: TextStyle(
+                  color: currentCriteria == SortCriteria.smart 
+                      ? Theme.of(context).primaryColor 
+                      : null,
+                  fontWeight: currentCriteria == SortCriteria.smart 
+                      ? FontWeight.bold 
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem<SortCriteria>(
           value: SortCriteria.alphabetical,
           child: Row(
             children: [
@@ -223,6 +248,8 @@ class SortInfoChip extends StatelessWidget {
         return 'Valor Total ↑';
       case SortCriteria.totalValueDescending:
         return 'Valor Total ↓';
+      case SortCriteria.smart:
+        return 'Padrão';
     }
   }
 

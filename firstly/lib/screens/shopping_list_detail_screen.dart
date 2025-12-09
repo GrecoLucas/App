@@ -30,7 +30,7 @@ class ShoppingListDetailScreen extends StatefulWidget {
 
 class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
-  SortCriteria _currentSortCriteria = SortCriteria.alphabetical;
+  SortCriteria _currentSortCriteria = SortCriteria.smart;
 
   @override
   void initState() {
@@ -117,6 +117,51 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       
       widget.onUpdate();
     }
+  }
+
+  // Alterna o estado de conclusão de um item
+  void _toggleItemCompletion(Item item) {
+    setState(() {
+      item.isCompleted = !item.isCompleted;
+    });
+    
+    if (item.isCompleted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Marcado como comprado'),
+          backgroundColor: AppTheme.primaryGreen,
+          duration: const Duration(seconds: 1),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    }
+    
+    widget.onUpdate();
+  }
+
+  // Alterna o estado de todos os itens
+  void _toggleAllItems() {
+    final allCompleted = widget.shoppingList.items.every((item) => item.isCompleted);
+    
+    setState(() {
+      for (var item in widget.shoppingList.items) {
+        item.isCompleted = !allCompleted;
+      }
+    });
+    
+    widget.onUpdate();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(allCompleted ? 'Todos os itens desmarcados' : 'Todos os itens marcados'),
+        backgroundColor: AppTheme.primaryGreen,
+      ),
+    );
   }
 
   // Remove um produto da lista
@@ -364,11 +409,24 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ],
         ),
         actions: [
-          if (widget.shoppingList.items.isNotEmpty)
+          if (widget.shoppingList.items.isNotEmpty) ...[
+            IconButton(
+              icon: Icon(
+                widget.shoppingList.items.every((i) => i.isCompleted) 
+                    ? Icons.remove_done
+                    : Icons.done_all,
+                color: AppTheme.primaryGreen,
+              ),
+              onPressed: _toggleAllItems,
+              tooltip: widget.shoppingList.items.every((i) => i.isCompleted)
+                  ? 'Desmarcar todos'
+                  : 'Marcar todos',
+            ),
             SortOptionsWidget(
               currentCriteria: _currentSortCriteria,
               onSortChanged: _updateSortCriteria,
             ),
+          ],
           const SizedBox(width: AppConstants.paddingSmall),
         ],
         backgroundColor: Colors.white,
@@ -678,6 +736,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               item: item,
               onEdit: () => _editProduct(item),
               onDelete: () => _removeProduct(item),
+              onToggle: () => _toggleItemCompletion(item),
             );
           },
         ),

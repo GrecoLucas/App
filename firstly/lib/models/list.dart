@@ -8,6 +8,7 @@ enum SortCriteria {
   quantityDescending,
   totalValueAscending,
   totalValueDescending,
+  smart, // Padrão: Não marcados primeiro (A-Z), depois marcados (A-Z)
 }
 
 class ShoppingList {
@@ -92,6 +93,11 @@ class ShoppingList {
       case SortCriteria.totalValueDescending:
         items.sort((a, b) => (b.price * b.quantity).compareTo(a.price * a.quantity));
         break;
+      case SortCriteria.smart:
+        // Ordenação inteligente é tratada primariamente no getSortedItems
+        // Aqui apenas ordenamos alfabeticamente como fallback
+        items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
     }
   }
 
@@ -120,6 +126,17 @@ class ShoppingList {
       case SortCriteria.totalValueDescending:
         sortedItems.sort((a, b) => (b.price * b.quantity).compareTo(a.price * a.quantity));
         break;
+      case SortCriteria.smart:
+        // Separa itens marcados e não marcados
+        final uncheckedItems = sortedItems.where((item) => !item.isCompleted).toList();
+        final checkedItems = sortedItems.where((item) => item.isCompleted).toList();
+        
+        // Ordena cada grupo alfabeticamente
+        uncheckedItems.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        checkedItems.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        
+        // Retorna a concatenação: não marcados primeiro
+        return [...uncheckedItems, ...checkedItems];
     }
     return sortedItems;
   }
@@ -160,8 +177,8 @@ class ShoppingList {
     final copiedItems = items.map((item) => 
       Item(
         name: item.name,
-        price: 0.0,
-        quantity: 1,
+        price: item.price,
+        quantity: item.quantity,
       )
     ).toList();
     

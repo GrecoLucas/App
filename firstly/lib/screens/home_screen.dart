@@ -189,7 +189,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: DropdownButtonFormField<ShoppingList?>(
                           value: selectedListToCopy,
                           decoration: const InputDecoration(
-                            labelText: 'Copiar produtos de (opcional)',
+                            labelText: 'Copiar de (opcional)',
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(
                               horizontal: AppConstants.paddingLarge,
@@ -201,7 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           items: [
                             const DropdownMenuItem<ShoppingList?>(
                               value: null,
-                              child: Text('Nenhuma (lista vazia)'),
+                              child: Text('Lista vazia'),
                             ),
                             ...shoppingLists.map((list) => DropdownMenuItem<ShoppingList?>(
                               value: list,
@@ -216,35 +216,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               selectedListToCopy = value;
                             });
                           },
-                        ),
-                      ),
-                    ],
-                    // Mostrar informação sobre a cópia quando há uma lista selecionada
-                    if (selectedListToCopy != null) ...[
-                      const SizedBox(height: AppConstants.paddingMedium),
-                      Container(
-                        padding: const EdgeInsets.all(AppConstants.paddingMedium),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightGreen,
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              color: AppTheme.darkGreen,
-                              size: AppConstants.iconSmall,
-                            ),
-                            const SizedBox(width: AppConstants.paddingSmall),
-                            Expanded(
-                              child: Text(
-                                'Os produtos serão copiados com quantidade 1 e preço €0,00',
-                                style: AppStyles.captionGrey.copyWith(
-                                  color: AppTheme.darkGreen,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ),
                     ],
@@ -665,53 +636,54 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildMainNavigationButtons() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.all(AppConstants.paddingLarge),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.all(AppConstants.paddingLarge),
+      child: Row(
         children: [
           // Botão Nova Lista de Compras
-          _buildNavigationButton(
-            icon: Icons.add_shopping_cart,
-            title: 'Nova Lista de Compras',
-            subtitle: 'Organize suas compras com scanner QR e orçamento',
-            gradient: AppTheme.primaryGradient,
-            onTap: _addNewList,
+          Expanded(
+            child: _buildCompactButton(
+              icon: Icons.add_shopping_cart,
+              label: 'Nova Lista',
+              gradient: AppTheme.primaryGradient,
+              onTap: _addNewList,
+            ),
           ),
-          const SizedBox(height: AppConstants.paddingMedium),
+          const SizedBox(width: AppConstants.paddingMedium),
           
           // Botão Favoritos
-          _buildNavigationButton(
-            icon: Icons.favorite,
-            title: 'Favoritos',
-            subtitle: 'Produtos salvos para reutilizar',
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE91E63), Color(0xFFF06292)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+          Expanded(
+            child: _buildCompactButton(
+              icon: Icons.favorite,
+              label: 'Favoritos',
+              gradient: const LinearGradient(
+                colors: [Color(0xFFE91E63), Color(0xFFF06292)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FavoriteItemsScreen(),
+                  ),
+                );
+              },
             ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const FavoriteItemsScreen(),
-                ),
-              );
-            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavigationButton({
+  Widget _buildCompactButton({
     required IconData icon,
-    required String title,
-    required String subtitle,
+    required String label,
     required Gradient gradient,
     required VoidCallback onTap,
   }) {
     return Container(
+      height: 100,
       decoration: BoxDecoration(
         gradient: gradient,
         borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
@@ -722,46 +694,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-          child: Padding(
-            padding: const EdgeInsets.all(AppConstants.paddingLarge),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppConstants.paddingMedium),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: AppConstants.iconLarge,
-                  ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: AppConstants.paddingLarge),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppStyles.bodyLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: AppStyles.bodyMedium.copyWith(
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
+                child: Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 32,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: AppStyles.bodyMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
       ),

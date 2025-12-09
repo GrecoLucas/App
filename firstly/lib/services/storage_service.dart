@@ -63,17 +63,17 @@ class StorageService {
       final preferenceString = prefs.getString(_sortPreferenceKey);
       
       if (preferenceString == null) {
-        return SortCriteria.alphabetical; // Padrão
+        return SortCriteria.smart; // Padrão
       }
 
       // Converte a string de volta para o enum
       return SortCriteria.values.firstWhere(
         (criteria) => criteria.toString() == preferenceString,
-        orElse: () => SortCriteria.alphabetical,
+        orElse: () => SortCriteria.smart,
       );
     } catch (e) {
       print('Erro ao carregar preferência de ordenação: $e');
-      return SortCriteria.alphabetical;
+      return SortCriteria.smart;
     }
   }
 
