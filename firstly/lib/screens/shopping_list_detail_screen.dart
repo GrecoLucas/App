@@ -11,6 +11,7 @@ import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
 import '../services/storage_service.dart';
+import '../services/pantry_service.dart';
 import '../providers/app_settings_provider.dart';
 import 'barcode_scanner_screen.dart';
 
@@ -162,6 +163,35 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         backgroundColor: AppTheme.primaryGreen,
       ),
     );
+  }
+
+  // Envia itens marcados para a despensa
+  void _addCheckedToPantry() async {
+    final checkedItems = widget.shoppingList.items.where((i) => i.isCompleted).toList();
+    
+    if (checkedItems.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Marque itens para enviar à despensa'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
+    final count = await PantryService.addItemsFromList(checkedItems);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$count itens enviados para a despensa!'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // Remove um produto da lista
@@ -643,7 +673,23 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                     label: const Text('Adicionar'),
                   ),
                 ),
-
+                const SizedBox(width: AppConstants.paddingSmall),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _addCheckedToPantry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      elevation: 2,
+                    ),
+                    icon: const Icon(Icons.kitchen, size: 18),
+                    label: const Text('Despensa'),
+                  ),
+                ),
               ],
             ),
           ],

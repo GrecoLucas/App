@@ -10,6 +10,7 @@ import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
 import '../providers/app_settings_provider.dart';
 import 'shopping_list_detail_screen.dart';
+import 'pantry_screen.dart';
 import 'favorite_items_screen.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
@@ -666,6 +667,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const FavoriteItemsScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: AppConstants.paddingMedium),
+
+          // Botão Despensa
+          Expanded(
+            child: _buildCompactButton(
+              icon: Icons.kitchen,
+              label: 'Despensa',
+              gradient: const LinearGradient(
+                colors: [Colors.orange, Colors.deepOrange],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const PantryScreen(),
                   ),
                 );
               },
