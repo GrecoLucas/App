@@ -360,51 +360,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             ),
           ],
         ),
-        const SizedBox(height: AppConstants.paddingSmall),
-        Container(
-          height: 8,
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: percentage > 1.0 ? 1.0 : percentage,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: isExceeded 
-                    ? LinearGradient(
-                        colors: [AppTheme.warningRed, AppTheme.warningRed.withOpacity(0.8)],
-                      )
-                    : LinearGradient(
-                        colors: [AppTheme.primaryGreen, AppTheme.lightGreen],
-                      ),
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-        ),
-        if (isExceeded) ...[
-          const SizedBox(height: AppConstants.paddingSmall),
-          Container(
-            height: 4,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppTheme.warningRed.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(2),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: ((totalPrice - budget) / budget).clamp(0.0, 1.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.warningRed,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -480,126 +435,100 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Widget _buildSummaryCard() {
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.all(AppConstants.paddingLarge),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), // Reduzido margin
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-        boxShadow: const [AppStyles.mediumShadow],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [AppStyles.softShadow], // Sombra mais leve
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppConstants.paddingLarge),
+        padding: const EdgeInsets.all(16), // Reduzido padding
         child: Column(
           children: [
+            // Linha única: Preço Total + Info Orçamento + Contagem
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.euro,
-                          color: AppTheme.primaryGreen,
-                          size: AppConstants.iconSmall,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Total da Lista:',
-                          style: AppStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w500,
+                // Esquerda: Totais e Orçamento
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                           Text(
+                            'Total: ',
+                            style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Consumer<AppSettingsProvider>(
-                      builder: (context, settingsProvider, child) {
-                        return FutureBuilder<String>(
-                          future: settingsProvider.formatPriceWithConversion(widget.shoppingList.totalPrice),
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              return Text(
-                                snapshot.data!,
-                                style: AppStyles.headingLarge.copyWith(
-                                  color: AppTheme.primaryGreen,
-                                ),
-                              );
-                            }
-                            return Text(
-                              '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}',
-                              style: AppStyles.headingLarge.copyWith(
-                                color: AppTheme.primaryGreen,
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                    // Mostrar progresso do orçamento se definido
-                    if (widget.shoppingList.budget != null) ...[
-                      const SizedBox(height: AppConstants.paddingSmall),
-                      Consumer<AppSettingsProvider>(
-                        builder: (context, settingsProvider, child) {
-                          final remainingBudget = widget.shoppingList.remainingBudget;
-                          final isBudgetExceeded = widget.shoppingList.isBudgetExceeded;
-                          
-                          return FutureBuilder<String>(
-                            future: settingsProvider.formatPriceWithConversion(remainingBudget.abs()),
-                            builder: (context, snapshot) {
-                              String displayText;
-                              if (snapshot.hasData) {
-                                displayText = isBudgetExceeded 
-                                    ? '${snapshot.data} acima do orçamento'
-                                    : '${snapshot.data} restante';
-                              } else {
-                                displayText = isBudgetExceeded
-                                    ? '€${remainingBudget.abs().toStringAsFixed(2)} acima do orçamento'
-                                    : '€${remainingBudget.toStringAsFixed(2)} restante';
-                              }
-                              
-                              return Text(
-                                displayText,
-                                style: AppStyles.captionGrey.copyWith(
-                                  color: isBudgetExceeded
-                                      ? AppTheme.warningRed
-                                      : AppTheme.darkGreen,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                          Consumer<AppSettingsProvider>(
+                            builder: (context, settingsProvider, child) {
+                              return FutureBuilder<String>(
+                                future: settingsProvider.formatPriceWithConversion(widget.shoppingList.totalPrice),
+                                builder: (context, snapshot) {
+                                  final price = snapshot.data ?? '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}';
+                                  return Text(
+                                    price,
+                                    style: AppStyles.headingMedium.copyWith(
+                                      color: AppTheme.primaryGreen,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                    ),
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
+                          ),
+                        ],
                       ),
-                    ],
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.all(AppConstants.paddingLarge),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.inventory_2,
-                        color: Colors.white,
-                        size: AppConstants.iconMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${widget.shoppingList.items.length}',
-                        style: AppStyles.bodyLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                      
+                      // Info Orçamento Compacta
+                      if (widget.shoppingList.budget != null) ...[
+                        const SizedBox(height: 2),
+                        Consumer<AppSettingsProvider>(
+                          builder: (context, settingsProvider, child) {
+                            final remainingBudget = widget.shoppingList.remainingBudget;
+                            final isBudgetExceeded = widget.shoppingList.isBudgetExceeded;
+                            
+                            return FutureBuilder<String>(
+                              future: settingsProvider.formatPriceWithConversion(remainingBudget.abs()),
+                              builder: (context, snapshot) {
+                                final val = snapshot.data ?? '€${remainingBudget.abs().toStringAsFixed(2)}';
+                                final displayText = isBudgetExceeded ? '$val acima' : '$val restante';
+                                
+                                return Text(
+                                  displayText,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              },
+                            );
+                          },
                         ),
-                      ),
+                      ],
+                    ],
+                  ),
+                ),
+                
+                // Direita: Contagem de Itens (Badge Style)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.softGrey,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.shopping_basket_outlined, size: 16, color: Colors.grey[700]),
+                      const SizedBox(width: 6),
                       Text(
-                        widget.shoppingList.items.length == 1 ? 'produto' : 'produtos',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
+                        '${widget.shoppingList.items.length} itens',
+                        style: TextStyle(
+                          color: Colors.grey[800],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
                       ),
                     ],
@@ -607,93 +536,82 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 ),
               ],
             ),
-            // Mostrar barra de progresso do orçamento se definido
+            
+            // Barra de progreço do Orçamento (se houver)
             if (widget.shoppingList.budget != null) ...[
-              const SizedBox(height: AppConstants.paddingLarge),
+              const SizedBox(height: 12),
               _buildBudgetProgress(),
             ],
-            // Botões de ação fixos
-            const SizedBox(height: AppConstants.paddingLarge),
-            // Primeira linha de botões
+
+            const SizedBox(height: 16),
+            const Divider(height: 1, color: Color(0xFFEEEEEE)),
+            const SizedBox(height: 16),
+
+            // Linha de Ações (4 botões compactos)
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _addFavoriteProducts,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.warningRed,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                      ),
-                      elevation: 2,
-                    ),
-                    icon: const Icon(Icons.favorite, size: 18),
-                    label: const Text('Favoritos'),
-                  ),
+                _buildCompactActionButton(
+                  icon: Icons.add_circle,
+                  color: AppTheme.primaryGreen,
+                  label: 'Adicionar',
+                  onTap: _addProduct,
                 ),
-                const SizedBox(width: AppConstants.paddingSmall),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _addProductViaScanner,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2196F3),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                      ),
-                      elevation: 2,
-                    ),
-                    icon: const Icon(Icons.qr_code_scanner, size: 18),
-                    label: const Text('Scanner'),
-                  ),
+                _buildCompactActionButton(
+                  icon: Icons.qr_code_scanner,
+                  color: const Color(0xFF2196F3),
+                  label: 'Scanner',
+                  onTap: _addProductViaScanner,
                 ),
-              ],
-            ),
-            const SizedBox(height: AppConstants.paddingSmall),
-            
-            // Segunda linha de botões
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _addProduct,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                      ),
-                      elevation: 2,
-                    ),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Adicionar'),
-                  ),
+                _buildCompactActionButton(
+                  icon: Icons.kitchen,
+                  color: Colors.orange,
+                  label: 'Despensa',
+                  onTap: _addCheckedToPantry,
                 ),
-                const SizedBox(width: AppConstants.paddingSmall),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _addCheckedToPantry,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                      ),
-                      elevation: 2,
-                    ),
-                    icon: const Icon(Icons.kitchen, size: 18),
-                    label: const Text('Despensa'),
-                  ),
+                _buildCompactActionButton(
+                  icon: Icons.favorite,
+                  color: AppTheme.warningRed,
+                  label: 'Favoritos',
+                  onTap: _addFavoriteProducts,
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompactActionButton({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
+          ),
+        ],
       ),
     );
   }
