@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 import '../providers/app_settings_provider.dart';
 
@@ -100,23 +101,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
     
     if (mounted) {
       setState(() => _isFavorite = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${productName.trim()} adicionado aos favoritos'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+      SnackBarService.success(context, '${productName.trim()} adicionado aos favoritos');
     }
   }
 
   void _toggleFavorite() async {
     if (productName.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Digite o nome do produto primeiro'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarService.warning(context, 'Digite o nome do produto primeiro');
       return;
     }
 
@@ -131,12 +122,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
       if (item.name.isNotEmpty) {
         await FavoriteItemsService.removeFavoriteItem(item.id);
         setState(() => _isFavorite = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${productName.trim()} removido dos favoritos'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        SnackBarService.warning(context, '${productName.trim()} removido dos favoritos');
       }
     } else {
       // Adicionar aos favoritos
@@ -433,12 +419,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   finalQuantity = 1; // Sempre 1 no modo peso
                 } else {
                   // Peso inválido
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Por favor, insira um peso válido'),
-                      backgroundColor: AppTheme.warningRed,
-                    ),
-                  );
+                  SnackBarService.error(context, 'Por favor, insira um peso válido');
                   return;
                 }
               } else {

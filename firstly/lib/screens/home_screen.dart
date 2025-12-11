@@ -4,9 +4,6 @@ import 'dart:async';
 import '../models/list.dart';
 import '../utils/app_theme.dart';
 import '../services/storage_service.dart';
-import '../models/list.dart';
-import '../utils/app_theme.dart';
-import '../services/storage_service.dart';
 import '../widgets/list_sort_options_widget.dart';
 import '../providers/app_settings_provider.dart';
 import 'shopping_list_detail_screen.dart';
@@ -260,13 +257,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       });
                       await _saveShoppingLists();
                       
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Lista "${newList.name}" criada com sucesso!'),
-                          backgroundColor: AppTheme.primaryGreen,
-                        ),
-                      );
-                      
                       _animationController.forward();
                       Navigator.pop(context);
                     }
@@ -400,15 +390,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       
                       await _saveShoppingLists();
                       
-                      await _saveShoppingLists();
-                      
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Lista "${list.name}" atualizada com sucesso!'),
-                          backgroundColor: AppTheme.primaryGreen,
-                        ),
-                      );
-                      
                       Navigator.pop(context);
                     }
                   },
@@ -479,21 +460,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   await _saveShoppingLists();
                   
                   Navigator.pop(context);
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Lista excluída com sucesso'),
-                      backgroundColor: AppTheme.primaryGreen,
-                    ),
-                  );
                 } catch (error) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Erro ao ${actionText}: $error'),
-                      backgroundColor: AppTheme.warningRed,
-                    ),
-                  );
                 }
               },
               style: ElevatedButton.styleFrom(

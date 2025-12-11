@@ -7,6 +7,7 @@ import '../services/favorite_items_service.dart';
 import '../services/app_settings_service.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/app_theme.dart';
+import '../services/snackbar_service.dart';
 
 
 class SettingsScreen extends StatefulWidget {
@@ -148,12 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
   }
 
   void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppTheme.primaryGreen,
-      ),
-    );
+    SnackBarService.success(context, message);
   }
 
   @override

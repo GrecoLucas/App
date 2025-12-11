@@ -10,7 +10,7 @@ import '../widgets/enhanced_product_card.dart';
 import '../widgets/quick_add_favorites_dialog.dart';
 import '../widgets/sort_options_widget.dart';
 import '../services/storage_service.dart';
-import '../services/storage_service.dart';
+import '../services/snackbar_service.dart';
 import '../services/pantry_service.dart';
 import '../providers/app_settings_provider.dart';
 import 'barcode_scanner_screen.dart';
@@ -127,19 +127,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     });
     
     if (item.isCompleted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Marcado como comprado'),
-          backgroundColor: AppTheme.primaryGreen,
-          duration: const Duration(seconds: 1),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      SnackBarService.success(context, 'Marcado como comprado');
     }
     
     widget.onUpdate();
@@ -157,12 +145,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     
     widget.onUpdate();
     
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(allCompleted ? 'Todos os itens desmarcados' : 'Todos os itens marcados'),
-        backgroundColor: AppTheme.primaryGreen,
-      ),
-    );
+    SnackBarService.success(context, allCompleted ? 'Todos os itens desmarcados' : 'Todos os itens marcados');
   }
 
   // Envia itens marcados para a despensa
@@ -171,12 +154,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     
     if (checkedItems.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Marque itens para enviar à despensa'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        SnackBarService.warning(context, 'Marque itens para enviar à despensa');
       }
       return;
     }
@@ -184,13 +162,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     final count = await PantryService.addItemsFromList(checkedItems);
     
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$count itens enviados para a despensa!'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      SnackBarService.warning(context, '$count itens enviados para a despensa!');
     }
   }
 
@@ -276,12 +248,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             
             widget.onUpdate();
             
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos'),
-                backgroundColor: AppTheme.primaryGreen,
-              ),
-            );
+            SnackBarService.success(context, '${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos');
           },
       ),
     );
@@ -311,12 +278,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       
       widget.onUpdate();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${scannedItem.name} adicionado via scanner'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+      SnackBarService.success(context, '${scannedItem.name} adicionado via scanner');
     }
   }
 
@@ -524,7 +486,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                       Icon(Icons.shopping_basket_outlined, size: 16, color: Colors.grey[700]),
                       const SizedBox(width: 6),
                       Text(
-                        '${widget.shoppingList.items.length} itens',
+                        '${widget.shoppingList.items.length}',
                         style: TextStyle(
                           color: Colors.grey[800],
                           fontWeight: FontWeight.bold,

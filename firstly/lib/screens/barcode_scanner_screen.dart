@@ -3,6 +3,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/scanned_item.dart';
 import '../services/barcode_service.dart';
 import '../services/product_api_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -531,10 +532,8 @@ class _NewItemDialogState extends State<_NewItemDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (nameController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Digite o nome do produto')),
-              );
+          if (nameController.text.trim().isEmpty) {
+              SnackBarService.warning(context, 'Digite o nome do produto');
               return;
             }
             

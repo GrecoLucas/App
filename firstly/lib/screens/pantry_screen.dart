@@ -182,11 +182,6 @@ class _PantryScreenState extends State<PantryScreen> {
     if (confirm == true) {
       await PantryService.removeItem(item.id);
       _loadItems();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${item.name} removido')),
-        );
-      }
     }
   }
 
@@ -372,14 +367,6 @@ class _PantryScreenState extends State<PantryScreen> {
                               item.lastAutoConsumeDate = value != null ? DateTime.now() : null;
                               await PantryService.updateItem(item);
                               setState(() {}); // Refresh UI
-                              if (value != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Consumo automático: -1 a cada $value dias'),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              }
                             },
                           ),
                         ),

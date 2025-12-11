@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/expense_list.dart';
 import '../models/scanned_item.dart';
 import '../services/barcode_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 import 'barcode_scanner_screen.dart';
 
@@ -52,13 +53,7 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
         widget.onUpdate();
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${result.name} adicionado à lista'),
-              backgroundColor: AppTheme.primaryGreen,
-              duration: const Duration(seconds: 2),
-            ),
-          );
+          SnackBarService.success(context, '${result.name} adicionado à lista');
         }
       } else {
         print('Nenhum resultado retornado do scanner');
@@ -66,13 +61,7 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
     } catch (e) {
       print('Erro ao escanear código de barras: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao escanear código de barras'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        SnackBarService.error(context, 'Erro ao escanear código de barras');
       }
     }
   }
@@ -270,13 +259,7 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
           widget.onUpdate();
           
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${newItem.name} adicionado à lista'),
-                backgroundColor: AppTheme.accentBlue,
-                duration: const Duration(seconds: 2),
-              ),
-            );
+            SnackBarService.info(context, '${newItem.name} adicionado à lista');
           }
         },
       ),
@@ -784,10 +767,8 @@ class _ManualItemDialogState extends State<_ManualItemDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (nameController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Digite o nome do produto')),
-              );
+          if (nameController.text.trim().isEmpty) {
+              SnackBarService.warning(context, 'Digite o nome do produto');
               return;
             }
             

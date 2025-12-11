@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 
 class EnhancedProductCard extends StatefulWidget {
@@ -49,12 +50,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
       if (item.name.isNotEmpty) {
         await FavoriteItemsService.removeFavoriteItem(item.id);
         setState(() => _isFavorite = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${widget.item.name} removido dos favoritos'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        SnackBarService.warning(context, '${widget.item.name} removido dos favoritos');
       }
     } else {
       // Adicionar aos favoritos
@@ -66,12 +62,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
       
       await FavoriteItemsService.addFavoriteItem(favoriteItem);
       setState(() => _isFavorite = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${widget.item.name} adicionado aos favoritos'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+      SnackBarService.success(context, '${widget.item.name} adicionado aos favoritos');
     }
   }
 

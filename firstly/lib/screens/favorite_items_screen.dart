@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 
 
@@ -88,12 +89,7 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
     if (confirmed == true) {
       await FavoriteItemsService.removeFavoriteItem(item.id);
       _loadFavoriteItems();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${item.name} removido dos favoritos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarService.warning(context, '${item.name} removido dos favoritos');
     }
   }
 
@@ -187,12 +183,7 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
       await FavoriteItemsService.saveFavoriteItems(_favoriteItems);
       _loadFavoriteItems();
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${item.name} atualizado'),
-          backgroundColor: AppTheme.primaryGreen,
-        ),
-      );
+      SnackBarService.success(context, '${item.name} atualizado');
     }
   }
 
@@ -222,12 +213,7 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
     if (confirmed == true) {
       await FavoriteItemsService.clearAllFavorites();
       _loadFavoriteItems();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Todos os favoritos foram removidos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      SnackBarService.warning(context, 'Todos os favoritos foram removidos');
     }
   }
 
