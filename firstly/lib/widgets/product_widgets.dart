@@ -236,7 +236,7 @@ class ProductCard extends StatelessWidget {
                                   size: AppConstants.iconSmall,
                                 ),
                                 onPressed: onDelete,
-                                tooltip: 'Remover produto',
+                                tooltip: 'Remover',
                               ),
                             ),
                           ],

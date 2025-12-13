@@ -5,6 +5,33 @@ import '../models/list.dart';
 class StorageService {
   static const String _shoppingListsKey = 'shopping_lists';
   static const String _sortPreferenceKey = 'sort_preference';
+  static const String _globalBudgetKey = 'global_budget';
+
+  /// Salva o orçamento global para todas as listas
+  static Future<void> saveGlobalBudget(double? budget) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (budget == null) {
+        await prefs.remove(_globalBudgetKey);
+      } else {
+        await prefs.setDouble(_globalBudgetKey, budget);
+      }
+    } catch (e) {
+      print('Erro ao salvar orçamento global: $e');
+    }
+  }
+
+  /// Carrega o orçamento global
+  static Future<double?> loadGlobalBudget() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final budget = prefs.getDouble(_globalBudgetKey);
+      return budget;
+    } catch (e) {
+      print('Erro ao carregar orçamento global: $e');
+      return null;
+    }
+  }
 
   /// Salva as listas de compras no armazenamento local
   static Future<void> saveShoppingLists(List<ShoppingList> lists) async {

@@ -123,4 +123,21 @@ class PantryService {
     items.removeWhere((i) => i.id == itemId);
     await savePantryItems(items);
   }
+
+  /// Busca item na despensa por nome (case insensitive)
+  static Future<PantryItem?> findItemByName(String name) async {
+    if (name.trim().isEmpty) return null;
+    try {
+      final items = await loadPantryItems();
+      for (final item in items) {
+        if (item.name.toLowerCase() == name.toLowerCase().trim()) {
+          return item;
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error finding pantry item by name: $e');
+      return null;
+    }
+  }
 }

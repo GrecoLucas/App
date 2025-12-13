@@ -66,7 +66,7 @@ class AppSettingsProvider extends ChangeNotifier {
         _loadExchangeRates();
       }
     } catch (e) {
-      print('Erro ao atualizar moeda principal: $e');
+      print('Erro ao atualizar moeda : $e');
     }
   }
   

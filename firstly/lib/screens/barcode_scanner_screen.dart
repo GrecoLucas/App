@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../models/pantry_item.dart';
 import '../models/scanned_item.dart';
 import '../services/barcode_service.dart';
+import '../services/pantry_service.dart';
 import '../services/product_api_service.dart';
 import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
@@ -203,6 +205,7 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
   late TextEditingController nameController;
   late TextEditingController priceController;
   late int quantity;
+  PantryItem? _pantryMatch;
 
   @override
   void initState() {
@@ -210,6 +213,21 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
     nameController = TextEditingController(text: widget.item.name);
     priceController = TextEditingController(text: widget.item.price.toStringAsFixed(2));
     quantity = widget.item.quantity;
+    _checkPantry();
+  }
+
+  void _checkPantry() async {
+    final name = nameController.text.trim();
+    if (name.isNotEmpty) {
+      final match = await PantryService.findItemByName(name);
+      if (mounted) {
+        setState(() => _pantryMatch = match);
+      }
+    } else {
+      if (mounted) {
+        setState(() => _pantryMatch = null);
+      }
+    }
   }
 
   @override
@@ -276,6 +294,7 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
             const SizedBox(height: AppConstants.paddingLarge),
             TextField(
               controller: nameController,
+              onChanged: (value) => _checkPantry(),
               decoration: InputDecoration(
                 labelText: 'Nome do Produto',
                 border: OutlineInputBorder(
@@ -285,6 +304,38 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                 fillColor: AppTheme.softGrey,
               ),
             ),
+            // Info da despensa (abaixo do nome)
+            if (nameController.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 12,
+                      color: _pantryMatch == null
+                          ? Colors.grey
+                          : _pantryMatch!.quantity > 0
+                              ? Colors.orange.shade700
+                              : Colors.red.shade700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _pantryMatch == null
+                          ? 'Novo na despensa'
+                          : '${_pantryMatch!.quantity} na despensa',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _pantryMatch == null
+                            ? Colors.grey
+                            : _pantryMatch!.quantity > 0
+                                ? Colors.orange.shade700
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: AppConstants.paddingMedium),
             TextField(
               controller: priceController,
@@ -377,12 +428,28 @@ class _NewItemDialogState extends State<_NewItemDialog> {
   late TextEditingController nameController;
   late TextEditingController priceController;
   int quantity = 1;
+  PantryItem? _pantryMatch;
 
   @override
   void initState() {
     super.initState();
     nameController = TextEditingController(text: widget.suggestedName ?? '');
     priceController = TextEditingController();
+    _checkPantry();
+  }
+
+  void _checkPantry() async {
+    final name = nameController.text.trim();
+    if (name.isNotEmpty) {
+      final match = await PantryService.findItemByName(name);
+      if (mounted) {
+        setState(() => _pantryMatch = match);
+      }
+    } else {
+      if (mounted) {
+        setState(() => _pantryMatch = null);
+      }
+    }
   }
 
   @override
@@ -475,6 +542,7 @@ class _NewItemDialogState extends State<_NewItemDialog> {
             const SizedBox(height: AppConstants.paddingLarge),
             TextField(
               controller: nameController,
+              onChanged: (value) => _checkPantry(),
               decoration: InputDecoration(
                 labelText: 'Nome do Produto',
                 border: OutlineInputBorder(
@@ -485,6 +553,38 @@ class _NewItemDialogState extends State<_NewItemDialog> {
               ),
               autofocus: widget.suggestedName == null, // Só foca se não tem nome sugerido
             ),
+            // Info da despensa (abaixo do nome)
+            if (nameController.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 12,
+                      color: _pantryMatch == null
+                          ? Colors.grey
+                          : _pantryMatch!.quantity > 0
+                              ? Colors.orange.shade700
+                              : Colors.red.shade700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _pantryMatch == null
+                          ? 'Novo na despensa'
+                          : '${_pantryMatch!.quantity} na despensa',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _pantryMatch == null
+                            ? Colors.grey
+                            : _pantryMatch!.quantity > 0
+                                ? Colors.orange.shade700
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             const SizedBox(height: AppConstants.paddingMedium),
             TextField(
               controller: priceController,

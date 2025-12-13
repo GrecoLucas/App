@@ -543,30 +543,12 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Seção Moeda Principal
+              // Seção Moeda 
               _buildPreferenceSection(
                 icon: Icons.paid,
-                title: 'Moeda Principal',
+                title: 'Moeda',
                 child: _buildPrimaryCurrencySelector(settingsProvider),
               ),
-              const SizedBox(height: AppConstants.paddingLarge),
-              
-              // Seção Moeda de Conversão
-              _buildPreferenceSection(
-                icon: Icons.currency_exchange,
-                title: 'Moeda de Conversão',
-                child: _buildConvertedCurrencySelector(settingsProvider),
-              ),
-              const SizedBox(height: AppConstants.paddingLarge),
-              
-              // Preview do Sistema de Conversão
-              _buildConversionPreview(settingsProvider),
-              
-              // Botão de Atualizar Taxas
-              if (settingsProvider.convertedCurrency != Currency.none && settingsProvider.exchangeRates.isNotEmpty) ...[
-                const SizedBox(height: AppConstants.paddingLarge),
-                _buildRefreshRatesButton(settingsProvider),
-              ],
               
               // Espaço extra no final para evitar overflow
               const SizedBox(height: 100),
@@ -650,189 +632,14 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
             groupValue: settingsProvider.primaryCurrency,
             activeColor: AppTheme.primaryGreen,
             onChanged: (Currency? value) async {
-              if (value != null && value != settingsProvider.convertedCurrency) {
+              if (value != null) {
                 await settingsProvider.setPrimaryCurrency(value);
-                _showSnackBar('Moeda principal alterada para ${value.displayName}');
-              } else if (value == settingsProvider.convertedCurrency) {
-                _showSnackBar('A moeda principal deve ser diferente da moeda de conversão');
+                _showSnackBar('Moeda alterada para ${value.displayName}');
               }
             },
           ),
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildConvertedCurrencySelector(AppSettingsProvider settingsProvider) {
-    return Column(
-      children: Currency.values.map((currency) {
-        final isSelected = settingsProvider.convertedCurrency == currency;
-        // Para moeda principal, não mostrar a opção "Sem conversão" se ela já for a principal
-        if (currency == Currency.none && settingsProvider.primaryCurrency == Currency.none) {
-          return const SizedBox.shrink();
-        }
-        
-        return Container(
-          margin: const EdgeInsets.only(bottom: AppConstants.paddingSmall),
-          child: RadioListTile<Currency>(
-            title: Text(
-              currency.displayName,
-              style: AppStyles.bodyMedium.copyWith(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-            subtitle: currency != Currency.none 
-                ? Text(
-                    'Símbolo: ${currency.symbol}',
-                    style: AppStyles.captionGrey.copyWith(
-                      color: isSelected ? AppTheme.primaryGreen : Colors.grey,
-                    ),
-                  )
-                : Text(
-                    'Mostrar apenas a moeda principal',
-                    style: AppStyles.captionGrey.copyWith(
-                      color: isSelected ? AppTheme.primaryGreen : Colors.grey,
-                    ),
-                  ),
-            value: currency,
-            groupValue: settingsProvider.convertedCurrency,
-            activeColor: AppTheme.primaryGreen,
-            onChanged: (Currency? value) async {
-              if (value != null && value != settingsProvider.primaryCurrency) {
-                await settingsProvider.setConvertedCurrency(value);
-                _showSnackBar(value == Currency.none 
-                    ? 'Conversão desabilitada'
-                    : 'Moeda de conversão alterada para ${value.displayName}');
-              } else if (value == settingsProvider.primaryCurrency) {
-                _showSnackBar('A moeda de conversão deve ser diferente da moeda principal');
-              }
-            },
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildConversionPreview(AppSettingsProvider settingsProvider) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.paddingLarge),
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryGreen.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.preview,
-                color: Colors.white,
-                size: AppConstants.iconSmall,
-              ),
-              const SizedBox(width: AppConstants.paddingSmall),
-              Text(
-                'Preview da Conversão',
-                style: AppStyles.bodyLarge.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppConstants.paddingMedium),
-          if (settingsProvider.isLoadingRates)
-            const Row(
-              children: [
-                SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
-                SizedBox(width: AppConstants.paddingSmall),
-                Text(
-                  'Carregando taxas de câmbio...',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ],
-            )
-          else if (settingsProvider.convertedCurrency == Currency.none)
-            Text(
-              'Exemplo: ${settingsProvider.primaryCurrency.symbol}29,99',
-              style: AppStyles.bodyLarge.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            )
-          else
-            FutureBuilder<String>(
-              future: settingsProvider.formatPriceWithConversion(29.99),
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  return Text(
-                    'Exemplo: ${snapshot.data}',
-                    style: AppStyles.bodyLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  );
-                }
-                return Text(
-                  'Exemplo: ${settingsProvider.primaryCurrency.symbol}29,99',
-                  style: AppStyles.bodyLarge.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRefreshRatesButton(AppSettingsProvider settingsProvider) {
-    return Center(
-      child: ElevatedButton.icon(
-        onPressed: settingsProvider.isLoadingRates
-            ? null
-            : () async {
-                await settingsProvider.refreshExchangeRates();
-                _showSnackBar('Taxas de câmbio atualizadas');
-              },
-        icon: settingsProvider.isLoadingRates
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.refresh),
-        label: Text(settingsProvider.isLoadingRates ? 'Atualizando...' : 'Atualizar Taxas'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryGreen,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppConstants.paddingLarge,
-            vertical: AppConstants.paddingMedium,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-          ),
-        ),
-      ),
     );
   }
 }

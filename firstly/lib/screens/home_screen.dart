@@ -36,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _isLoading = true;
   ListSortCriteria _currentListSortCriteria = ListSortCriteria.dateNewest;
   Timer? _pollingTimer;
+  double? _globalBudget;
 
   @override
   void initState() {
@@ -45,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     );
     _loadShoppingLists();
+    _loadGlobalBudget();
     // _startPolling();
   }
 
@@ -87,6 +89,168 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (e) {
       // Erro ao salvar
     }
+  }
+
+  // Carrega o orçamento global
+  Future<void> _loadGlobalBudget() async {
+    try {
+      final budget = await StorageService.loadGlobalBudget();
+      setState(() {
+        _globalBudget = budget;
+      });
+    } catch (e) {
+      // Erro ao carregar
+    }
+  }
+
+  // Salva o orçamento global
+  Future<void> _saveGlobalBudget(double? budget) async {
+    try {
+      await StorageService.saveGlobalBudget(budget);
+      setState(() {
+        _globalBudget = budget;
+      });
+    } catch (e) {
+      // Erro ao salvar
+    }
+  }
+
+  // Calcula o valor total de todas as listas
+  double get _totalAllListsValue {
+    return shoppingLists.fold(0.0, (sum, list) => sum + list.totalPrice);
+  }
+
+  // Exibe o diálogo para configurar o orçamento global
+  void _showGlobalBudgetDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        String budgetText = _globalBudget?.toStringAsFixed(2) ?? '';
+        
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+              ),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGreen.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet,
+                      color: AppTheme.primaryGreen,
+                    ),
+                  ),
+                  const SizedBox(width: AppConstants.paddingMedium),
+                  const Flexible(
+                    child: Text(
+                      'Orçamento',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Defina o valor máximo que deseja gastar com todas as suas listas.',
+                      style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: AppConstants.paddingMedium),
+                    Consumer<AppSettingsProvider>(
+                      builder: (context, settingsProvider, child) {
+                        return TextField(
+                          onChanged: (value) => budgetText = value,
+                          decoration: InputDecoration(
+                            labelText: 'Orçamento Global',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                            ),
+                            hintText: 'Ex: 500.00',
+                            prefixIcon: const Icon(Icons.attach_money),
+                            prefixText: '${settingsProvider.primaryCurrency.symbol} ',
+                            filled: true,
+                            fillColor: AppTheme.softGrey,
+                            suffixIcon: _globalBudget != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        budgetText = '';
+                                      });
+                                    },
+                                    tooltip: 'Remover orçamento',
+                                  )
+                                : null,
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          controller: TextEditingController(text: budgetText),
+                          autofocus: true,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: AppConstants.paddingMedium),
+                    Container(
+                      padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                      decoration: BoxDecoration(
+                        color: AppTheme.softGrey,
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      child: Consumer<AppSettingsProvider>(
+                        builder: (context, settingsProvider, child) {
+                          return Row(
+                            children: [
+                              Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                              const SizedBox(width: AppConstants.paddingSmall),
+                              Expanded(
+                                child: Text(
+                                  'Total atual: ${settingsProvider.primaryCurrency.symbol}${_totalAllListsValue.toStringAsFixed(2)}',
+                                  style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar'),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    double? budget;
+                    if (budgetText.isNotEmpty) {
+                      budget = double.tryParse(budgetText.replaceAll(',', '.'));
+                    }
+                    
+                    await _saveGlobalBudget(budget);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Salvar'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   // Adiciona uma nova lista de compras
@@ -790,33 +954,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               horizontal: AppConstants.paddingSmall,
               vertical: AppConstants.paddingMedium,
             ),
-            child: Row(
-              children: [
-                Text(
-                  'Minhas Listas',
-                  style: AppStyles.headingMedium.copyWith(
-                    color: AppTheme.darkGreen,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppConstants.paddingMedium,
-                    vertical: AppConstants.paddingSmall,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-                  ),
-                  child: Text(
-                    '${shoppingLists.length} ${shoppingLists.length == 1 ? 'lista' : 'listas'}',
-                    style: AppStyles.bodyMedium.copyWith(
-                      color: AppTheme.primaryGreen,
-                      fontWeight: FontWeight.w600,
+            child: Consumer<AppSettingsProvider>(
+              builder: (context, settingsProvider, child) {
+                final remaining = _globalBudget != null 
+                    ? _globalBudget! - _totalAllListsValue 
+                    : null;
+                final isOverBudget = remaining != null && remaining < 0;
+                
+                return InkWell(
+                  onTap: _showGlobalBudgetDialog,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      boxShadow: const [AppStyles.softShadow],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Total: ${settingsProvider.primaryCurrency.symbol}${_totalAllListsValue.toStringAsFixed(2)}',
+                                style: AppStyles.headingMedium.copyWith(
+                                  color: AppTheme.darkGreen,
+                                  fontSize: 18,
+                                ),
+                              ),
+                              if (_globalBudget != null)
+                                Text(
+                                  isOverBudget
+                                      ? '${settingsProvider.primaryCurrency.symbol}${(-remaining!).toStringAsFixed(2)} acima'
+                                      : 'Restam ${settingsProvider.primaryCurrency.symbol}${remaining!.toStringAsFixed(2)}',
+                                  style: AppStyles.bodyMedium.copyWith(
+                                    color: isOverBudget ? AppTheme.warningRed : AppTheme.primaryGreen,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              if (_globalBudget == null)
+                                Text(
+                                  'Toque para definir orçamento',
+                                  style: AppStyles.captionGrey.copyWith(fontSize: 12),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppConstants.paddingMedium,
+                            vertical: AppConstants.paddingSmall,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                          ),
+                          child: Text(
+                            '${shoppingLists.length}',
+                            style: AppStyles.bodyMedium.copyWith(
+                              color: AppTheme.primaryGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.paddingSmall),
+                        Icon(
+                          Icons.edit,
+                          color: Colors.grey[400],
+                          size: 18,
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
           Expanded(
@@ -834,233 +1047,170 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildShoppingListCard(ShoppingList list, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppConstants.paddingMedium),
-      decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-        boxShadow: const [AppStyles.softShadow],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ShoppingListDetailScreen(
-                  shoppingList: list,
-                  onUpdate: () {
-                    setState(() {});
-                    _saveShoppingLists();
-                  },
+    return GestureDetector(
+      onLongPress: () => _showListOptionsMenu(context, list, index),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppConstants.paddingSmall),
+        decoration: BoxDecoration(
+          gradient: AppTheme.cardGradient,
+          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+          boxShadow: const [AppStyles.softShadow],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ShoppingListDetailScreen(
+                    shoppingList: list,
+                    onUpdate: () {
+                      setState(() {});
+                      _saveShoppingLists();
+                    },
+                  ),
                 ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.paddingMedium,
+                vertical: AppConstants.paddingMedium,
               ),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(AppConstants.paddingLarge),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(AppConstants.paddingMedium),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.shopping_basket,
-                        color: Colors.white,
-                        size: AppConstants.iconMedium,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: AppConstants.paddingLarge),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              list.name,
-                              style: AppStyles.bodyLarge.copyWith(
-                                color: AppTheme.darkGreen,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppConstants.paddingSmall),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: AppConstants.iconSmall,
-                            color: AppTheme.textGrey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${list.items.length}',
-                            style: AppStyles.captionGrey,
-                          ),
-                          const SizedBox(width: AppConstants.paddingMedium),
-                          Consumer<AppSettingsProvider>(
-                            builder: (context, settingsProvider, child) {
-                              return Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.attach_money,
-                                      size: AppConstants.iconSmall,
-                                      color: AppTheme.primaryGreen,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        '${settingsProvider.primaryCurrency.symbol}${list.totalPrice.toStringAsFixed(2)}',
-                                        style: AppStyles.captionGrey.copyWith(
-                                          color: AppTheme.primaryGreen,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppConstants.paddingSmall),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: AppConstants.iconSmall,
-                            color: AppTheme.textGrey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${list.createdAt.day.toString().padLeft(2, '0')}/${list.createdAt.month.toString().padLeft(2, '0')}/${list.createdAt.year}',
-                            style: AppStyles.captionGrey,
-                          ),
-                        ],
-                      ),
-                      // Mostrar informação do orçamento se disponível
-                      if (list.budget != null) ...[
-                        const SizedBox(height: AppConstants.paddingSmall),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Lado esquerdo: Nome, data, valor
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Nome + número de itens na mesma linha
                         Row(
                           children: [
-                            Icon(
-                              Icons.account_balance_wallet,
-                              size: AppConstants.iconSmall,
-                              color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
+                            Flexible(
+                              child: Text(
+                                list.name,
+                                style: AppStyles.bodyLarge.copyWith(
+                                  color: AppTheme.darkGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const SizedBox(width: 4),
-                            Consumer<AppSettingsProvider>(
-                              builder: (context, settingsProvider, child) {
-                                final remainingBudget = list.remainingBudget;
-                                final displayText = list.isBudgetExceeded 
-                                    ? '${settingsProvider.primaryCurrency.symbol}${remainingBudget.abs().toStringAsFixed(2)} acima'
-                                    : '${settingsProvider.primaryCurrency.symbol}${remainingBudget.toStringAsFixed(2)} restante';
-                                
-                                return Expanded(
-                                  child: Text(
-                                    displayText,
-                                    style: AppStyles.captionGrey.copyWith(
-                                      color: list.isBudgetExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                );
-                              },
+                            const SizedBox(width: 8),
+                            Text(
+                              '${list.items.length} ${list.items.length == 1 ? 'item' : 'itens'}',
+                              style: AppStyles.captionGrey.copyWith(fontSize: 12),
                             ),
-                            const SizedBox(width: AppConstants.paddingSmall),
                           ],
                         ),
-                      ],
-                    ],
-                  ),
-                ),
-                Column(
-                  children: [
-                    // Botão de menu com dropdown
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.textGrey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                      ),
-                      child: PopupMenuButton<String>(
-                        onSelected: (value) {
-                          switch (value) {
-                            case 'edit':
-                              _editList(list, index);
-                              break;
-                            case 'copy':
-                              _copyList(list);
-                              break;
-                            case 'delete':
-                              _deleteList(index);
-                              break;
-                          }
-                        },
-                        icon: Icon(
-                          Icons.more_vert,
-                          color: AppTheme.textGrey,
-                          size: AppConstants.iconSmall,
+                        const SizedBox(height: 4),
+                        // Data de criação
+                        Text(
+                          '${list.createdAt.day.toString().padLeft(2, '0')}/${list.createdAt.month.toString().padLeft(2, '0')}/${list.createdAt.year}',
+                          style: AppStyles.captionGrey.copyWith(fontSize: 12),
                         ),
-                        tooltip: 'Mais opções',
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(
-                              children: [
-                                Icon(Icons.edit, color: AppTheme.primaryGreen, size: 18),
-                                SizedBox(width: 8),
-                                Text('Editar'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'copy',
-                            child: Row(
-                              children: [
-                                Icon(Icons.copy, color: AppTheme.accentBlue, size: 18),
-                                SizedBox(width: 8),
-                                Text('Copiar'),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: AppTheme.warningRed, size: 18),
-                                SizedBox(width: 8),
-                                Text('Excluir'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                        const SizedBox(height: 4),
+                        // Valor total
+                        Consumer<AppSettingsProvider>(
+                          builder: (context, settingsProvider, child) {
+                            return Text(
+                              '${settingsProvider.primaryCurrency.symbol}${list.totalPrice.toStringAsFixed(2)}',
+                              style: AppStyles.bodyMedium.copyWith(
+                                color: AppTheme.primaryGreen,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                  ],
-                ),
-              ],
+                  ),
+                  // Lado direito: Orçamento restante (se houver)
+                  if (list.budget != null)
+                    Consumer<AppSettingsProvider>(
+                      builder: (context, settingsProvider, child) {
+                        final remainingBudget = list.remainingBudget;
+                        final isExceeded = list.isBudgetExceeded;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isExceeded 
+                                ? AppTheme.warningRed.withOpacity(0.1) 
+                                : AppTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                          ),
+                          child: Text(
+                            isExceeded 
+                                ? '${settingsProvider.primaryCurrency.symbol}${remainingBudget.abs().toStringAsFixed(2)} acima'
+                                : '${settingsProvider.primaryCurrency.symbol}${remainingBudget.toStringAsFixed(2)} restante',
+                            style: AppStyles.captionGrey.copyWith(
+                              fontSize: 11,
+                              color: isExceeded ? AppTheme.warningRed : AppTheme.darkGreen,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showListOptionsMenu(BuildContext context, ShoppingList list, int index) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit, color: AppTheme.primaryGreen),
+              title: const Text('Editar'),
+              onTap: () {
+                Navigator.pop(context);
+                _editList(list, index);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy, color: AppTheme.accentBlue),
+              title: const Text('Copiar'),
+              onTap: () {
+                Navigator.pop(context);
+                _copyList(list);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppTheme.warningRed),
+              title: const Text('Excluir'),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteList(index);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
         ),
       ),
     );

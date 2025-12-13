@@ -196,7 +196,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 ),
               ),
               const SizedBox(width: AppConstants.paddingMedium),
-              const Text('Remover Produto'),
+              const Text('Remover'),
             ],
           ),
           content: Text(

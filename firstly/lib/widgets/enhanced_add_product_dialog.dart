@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/favorite_item.dart';
+import '../models/pantry_item.dart';
 import '../services/favorite_items_service.dart';
+import '../services/pantry_service.dart';
 import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
 import '../providers/app_settings_provider.dart';
@@ -34,6 +36,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
   int selectedQuantity = 1;
   bool _isFavorite = false;
   bool _isWeightMode = false; // Novo: controla se está no modo por peso
+  PantryItem? _pantryMatch; // Item correspondente na despensa
 
   @override
   void initState() {
@@ -62,6 +65,19 @@ class _AddProductDialogState extends State<AddProductDialog> {
     if (productName.trim().isNotEmpty) {
       final isFav = await FavoriteItemsService.isFavorite(productName.trim());
       setState(() => _isFavorite = isFav);
+    }
+  }
+
+  void _checkPantry() async {
+    if (productName.trim().isNotEmpty) {
+      final match = await PantryService.findItemByName(productName.trim());
+      if (mounted) {
+        setState(() => _pantryMatch = match);
+      }
+    } else {
+      if (mounted) {
+        setState(() => _pantryMatch = null);
+      }
     }
   }
 
@@ -208,6 +224,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
               onChanged: (value) {
                 productName = value;
                 _checkIfFavorite();
+                _checkPantry();
               },
               decoration: InputDecoration(
                 labelText: 'Nome do Produto',
@@ -237,6 +254,38 @@ class _AddProductDialogState extends State<AddProductDialog> {
               ),
               autofocus: true,
             ),
+            // Info da despensa (abaixo do nome)
+            if (productName.trim().isNotEmpty && !widget.isEditing)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, left: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      size: 12,
+                      color: _pantryMatch == null
+                          ? Colors.grey
+                          : _pantryMatch!.quantity > 0
+                              ? Colors.orange.shade700
+                              : Colors.red.shade700,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _pantryMatch == null
+                          ? 'Novo na despensa'
+                          : '${_pantryMatch!.quantity} na despensa',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: _pantryMatch == null
+                            ? Colors.grey
+                            : _pantryMatch!.quantity > 0
+                                ? Colors.orange.shade700
+                                : Colors.red.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
             
             // Campo preço

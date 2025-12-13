@@ -25,13 +25,13 @@ class AppSettingsService {
   static const Currency _defaultPrimaryCurrency = Currency.eur;
   static const Currency _defaultConvertedCurrency = Currency.none;
 
-  /// Salva a moeda principal selecionada
+  /// Salva a moeda  selecionada
   static Future<void> savePrimaryCurrency(Currency currency) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_primaryCurrencyKey, currency.name);
     } catch (e) {
-      print('Erro ao salvar moeda principal: $e');
+      print('Erro ao salvar moeda : $e');
     }
   }
 
@@ -45,7 +45,7 @@ class AppSettingsService {
     }
   }
 
-  /// Carrega a moeda principal salva
+  /// Carrega a moeda  salva
   static Future<Currency> loadPrimaryCurrency() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -63,7 +63,7 @@ class AppSettingsService {
       
       return _defaultPrimaryCurrency;
     } catch (e) {
-      print('Erro ao carregar moeda principal: $e');
+      print('Erro ao carregar moeda : $e');
       return _defaultPrimaryCurrency;
     }
   }
