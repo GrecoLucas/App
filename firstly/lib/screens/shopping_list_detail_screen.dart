@@ -68,8 +68,10 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   }
   // Adiciona um novo produto à lista
   void _addProduct() async {
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => const AddProductDialog(),
     );
     
@@ -97,8 +99,10 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       print('Item não encontrado na lista: ${item.id}');
       return;
     }
-    final result = await showDialog<Map<String, dynamic>>(
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => AddProductDialog(
         initialName: item.name,
         initialPrice: item.price,

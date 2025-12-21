@@ -302,7 +302,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
       ),
-      contentPadding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+      contentPadding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)),
+      titlePadding: EdgeInsets.fromLTRB(
+        AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        0,
+      ),
       title: Row(
         children: [
           Container(
@@ -317,12 +323,12 @@ class _AddProductDialogState extends State<AddProductDialog> {
               size: isSmallScreen ? AppConstants.iconSmall : AppConstants.iconMedium,
             ),
           ),
-          SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+          SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)), // Reduced spacing
           Flexible(
             child: Text(
               widget.isEditing ? 'Editar Produto' : 'Adicionar Produto',
               style: AppStyles.headingMedium.copyWith(
-                fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize!),
+                fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize! * 0.9),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -338,6 +344,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
               onChanged: (value) => productName = value,
               decoration: InputDecoration(
                 labelText: 'Nome do Produto',
+                isDense: true,
                 labelStyle: TextStyle(
                   fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
                 ),
@@ -354,9 +361,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 ),
                 filled: true,
                 fillColor: AppTheme.softGrey,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                  vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
               ),
               style: TextStyle(
@@ -364,12 +371,13 @@ class _AddProductDialogState extends State<AddProductDialog> {
               ),
               autofocus: true,
             ),
-            SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+            const SizedBox(height: 8),
             TextField(
               controller: priceController,
               onChanged: (value) => productPrice = value,
               decoration: InputDecoration(
                 labelText: 'Preço (opcional)',
+                isDense: true,
                 labelStyle: TextStyle(
                   fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
                 ),
@@ -387,9 +395,9 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 ),
                 filled: true,
                 fillColor: AppTheme.softGrey,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                  vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
                 ),
               ),
               style: TextStyle(
@@ -397,7 +405,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
-            SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+            const SizedBox(height: 8),
             Container(
               decoration: BoxDecoration(
                 color: AppTheme.softGrey,
@@ -408,13 +416,14 @@ class _AddProductDialogState extends State<AddProductDialog> {
                 value: selectedQuantity,
                 decoration: InputDecoration(
                   labelText: 'Quantidade',
+                  isDense: true,
                   labelStyle: TextStyle(
                     fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium),
                   ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge),
-                    vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                   prefixIcon: Icon(
                     Icons.format_list_numbered,
@@ -441,6 +450,10 @@ class _AddProductDialogState extends State<AddProductDialog> {
             ),
           ],
         ),
+      ),
+      actionsPadding: EdgeInsets.symmetric(
+        horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall),
       ),
       actions: [
         TextButton(
@@ -482,7 +495,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
             foregroundColor: Colors.white,
             padding: EdgeInsets.symmetric(
               horizontal: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge),
-              vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+              vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall), // Compact vertical padding
             ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppConstants.radiusMedium),

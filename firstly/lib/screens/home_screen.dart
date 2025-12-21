@@ -11,6 +11,7 @@ import 'pantry_screen.dart';
 import 'favorite_items_screen.dart';
 import 'settings_screen.dart';
 import 'help_screen.dart';
+import '../widgets/shopping_list_dialog.dart';
 
 enum ListSortCriteria {
   nameAscending,
@@ -120,132 +121,159 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return shoppingLists.fold(0.0, (sum, list) => sum + list.totalPrice);
   }
 
-  // Exibe o diálogo para configurar o orçamento global
+  // Exibe o painel para configurar o orçamento global
   void _showGlobalBudgetDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) {
         String budgetText = _globalBudget?.toStringAsFixed(2) ?? '';
         
         return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet,
-                      color: AppTheme.primaryGreen,
-                    ),
+          builder: (context, setSheetState) {
+            final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+            
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomPadding),
+              child: Container(
+                padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(AppConstants.radiusXLarge),
                   ),
-                  const SizedBox(width: AppConstants.paddingMedium),
-                  const Flexible(
-                    child: Text(
-                      'Orçamento',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Handle visual
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet,
+                            color: AppTheme.primaryGreen,
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.paddingMedium),
+                        const Flexible(
+                          child: Text(
+                            'Orçamento Global',
+                            style: AppStyles.headingMedium,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppConstants.paddingMedium),
+                    
                     Text(
                       'Defina o valor máximo que deseja gastar com todas as suas listas.',
                       style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: AppConstants.paddingMedium),
-                    Consumer<AppSettingsProvider>(
-                      builder: (context, settingsProvider, child) {
-                        return TextField(
-                          onChanged: (value) => budgetText = value,
-                          decoration: InputDecoration(
-                            labelText: 'Orçamento Global',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                            ),
-                            hintText: 'Ex: 500.00',
-                            prefixIcon: const Icon(Icons.attach_money),
-                            prefixText: '${settingsProvider.primaryCurrency.symbol} ',
-                            filled: true,
-                            fillColor: AppTheme.softGrey,
-                            suffixIcon: _globalBudget != null
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        budgetText = '';
-                                      });
-                                    },
-                                    tooltip: 'Remover orçamento',
-                                  )
-                                : null,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          controller: TextEditingController(text: budgetText),
-                          autofocus: true,
-                        );
-                      },
+                    
+                    TextField(
+                      onChanged: (value) => budgetText = value,
+                      decoration: InputDecoration(
+                        labelText: 'Orçamento Global',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                        ),
+                        hintText: 'Ex: 500.00',
+                        prefixIcon: const Icon(Icons.attach_money),
+                        // prefixText: settingsProvider... (simplified access if needed or use Consumer)
+                        filled: true,
+                        fillColor: AppTheme.softGrey,
+                        suffixIcon: _globalBudget != null
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  setSheetState(() {
+                                    budgetText = '';
+                                  });
+                                },
+                                tooltip: 'Remover orçamento',
+                              )
+                            : null,
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      controller: TextEditingController(text: budgetText),
+                      autofocus: true,
                     ),
+                    
                     const SizedBox(height: AppConstants.paddingMedium),
+                    
                     Container(
                       padding: const EdgeInsets.all(AppConstants.paddingMedium),
                       decoration: BoxDecoration(
                         color: AppTheme.softGrey,
                         borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
                       ),
-                      child: Consumer<AppSettingsProvider>(
-                        builder: (context, settingsProvider, child) {
-                          return Row(
-                            children: [
-                              Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
-                              const SizedBox(width: AppConstants.paddingSmall),
-                              Expanded(
-                                child: Text(
-                                  'Total atual: ${settingsProvider.primaryCurrency.symbol}${_totalAllListsValue.toStringAsFixed(2)}',
-                                  style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, color: Colors.grey[600], size: 20),
+                          const SizedBox(width: AppConstants.paddingSmall),
+                          Expanded(
+                            child: Text(
+                              'Total atual: €${_totalAllListsValue.toStringAsFixed(2)}',
+                              style: AppStyles.bodyMedium.copyWith(color: Colors.grey[600]),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    
+                    const SizedBox(height: AppConstants.paddingLarge),
+                    
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancelar'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () async {
+                            double? budget;
+                            if (budgetText.isNotEmpty) {
+                              budget = double.tryParse(budgetText.replaceAll(',', '.'));
+                            }
+                            
+                            await _saveGlobalBudget(budget);
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Salvar'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    double? budget;
-                    if (budgetText.isNotEmpty) {
-                      budget = double.tryParse(budgetText.replaceAll(',', '.'));
-                    }
-                    
-                    await _saveGlobalBudget(budget);
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Salvar'),
-                ),
-              ],
             );
           },
         );
@@ -263,312 +291,68 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _showCreateListDialog(originalList: originalList);
   }
 
-  // Exibe o diálogo para criar uma nova lista (com opção de cópia)
-  void _showCreateListDialog({ShoppingList? originalList}) {
-    showDialog(
+  // Exibe o painel para criar uma nova lista (com opção de cópia)
+  void _showCreateListDialog({ShoppingList? originalList}) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (context) {
-        String listName = originalList != null ? 'Cópia de ${originalList.name}' : '';
-        String budgetText = '';
-        ShoppingList? selectedListToCopy = originalList;
-        
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                    ),
-                    child: Icon(
-                      originalList != null ? Icons.copy : Icons.add_shopping_cart,
-                      color: AppTheme.primaryGreen,
-                    ),
-                  ),
-                  const SizedBox(width: AppConstants.paddingMedium),
-                  Flexible(
-                    child: Text(
-                      originalList != null ? 'Copiar Lista' : 'Nova Lista',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-                  ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      onChanged: (value) => listName = value,
-                      decoration: InputDecoration(
-                        labelText: 'Nome da Lista',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                        ),
-                        hintText: 'Ex: Supermercado, Farmácia...',
-                        prefixIcon: const Icon(Icons.shopping_basket),
-                        filled: true,
-                        fillColor: AppTheme.softGrey,
-                      ),
-                      autofocus: true,
-                      controller: TextEditingController(text: listName),
-                    ),
-                    const SizedBox(height: AppConstants.paddingMedium),
-                    Consumer<AppSettingsProvider>(
-                      builder: (context, settingsProvider, child) {
-                        return TextField(
-                          onChanged: (value) => budgetText = value,
-                          decoration: InputDecoration(
-                            labelText: 'Orçamento (opcional)',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                            ),
-                            hintText: 'Ex: 50.00',
-                            prefixIcon: Icon(Icons.attach_money),
-                            prefixText: '${settingsProvider.primaryCurrency.symbol} ',
-                            filled: true,
-                            fillColor: AppTheme.softGrey,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        );
-                      },
-                    ),
-                    // Mostrar opção de cópia apenas quando não estamos já copiando uma lista específica
-                    if (originalList == null && shoppingLists.isNotEmpty) ...[
-                      const SizedBox(height: AppConstants.paddingMedium),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.softGrey,
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                          border: Border.all(color: Colors.grey.withOpacity(0.3)),
-                        ),
-                        child: DropdownButtonFormField<ShoppingList?>(
-                          value: selectedListToCopy,
-                          decoration: const InputDecoration(
-                            labelText: 'Copiar de (opcional)',
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: AppConstants.paddingLarge,
-                              vertical: AppConstants.paddingMedium,
-                            ),
-                            prefixIcon: Icon(Icons.copy),
-                          ),
-                          dropdownColor: Colors.white,
-                          items: [
-                            const DropdownMenuItem<ShoppingList?>(
-                              value: null,
-                              child: Text('Lista vazia'),
-                            ),
-                            ...shoppingLists.map((list) => DropdownMenuItem<ShoppingList?>(
-                              value: list,
-                              child: Text(
-                                list.name,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            )),
-                          ],
-                          onChanged: (value) {
-                            setDialogState(() {
-                              selectedListToCopy = value;
-                            });
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (listName.trim().isNotEmpty) {
-                      double? budget;
-                      if (budgetText.isNotEmpty) {
-                        budget = double.tryParse(budgetText.replaceAll(',', '.'));
-                      }
-                      
-                      // Criar a lista com os itens copiados se necessário
-                      ShoppingList newList;
-                      if (selectedListToCopy != null) {
-                        newList = selectedListToCopy!.copyAsTemplate(
-                          newName: listName.trim(),
-                          newBudget: budget,
-                        );
-                      } else {
-                        newList = ShoppingList(
-                          name: listName.trim(), 
-                          items: [],
-                          budget: budget,
-                        );
-                      }
-                      
-                      // SEMPRE salvar apenas localmente na criação
-                      // A lista só será enviada para a Supabase quando for compartilhada
-                      print('Salvando lista localmente: ${newList.name}');
-                      
-                      setState(() {
-                        shoppingLists.add(newList);
-                      });
-                      await _saveShoppingLists();
-                      
-                      _animationController.forward();
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: Text(originalList != null ? 'Copiar' : 'Criar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShoppingListDialog(
+        originalList: originalList,
+        existingLists: shoppingLists,
+      ),
     );
+
+    if (result != null) {
+      final String listName = result['name'];
+      final double? budget = result['budget'];
+      final ShoppingList? copyFrom = result['copyFrom'];
+
+      ShoppingList newList;
+      if (copyFrom != null) {
+        newList = copyFrom.copyAsTemplate(
+          newName: listName,
+          newBudget: budget,
+        );
+      } else {
+        newList = ShoppingList(
+          name: listName,
+          items: [],
+          budget: budget,
+        );
+      }
+
+      setState(() {
+        shoppingLists.add(newList);
+      });
+      await _saveShoppingLists();
+      
+      _animationController.forward();
+    }
   }
 
   // Edita o nome e orçamento de uma lista
-  void _editList(ShoppingList list, int index) {
-    showDialog(
+  void _editList(ShoppingList list, int index) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      builder: (context) {
-        String listName = list.name;
-        String budgetText = list.budget?.toStringAsFixed(2) ?? '';
-        
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-              ),
-              title: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                    ),
-                    child: const Icon(
-                      Icons.edit,
-                      color: AppTheme.primaryGreen,
-                    ),
-                  ),
-                  const SizedBox(width: AppConstants.paddingMedium),
-                  const Flexible(
-                    child: Text(
-                      'Editar Lista',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      onChanged: (value) => listName = value,
-                      decoration: InputDecoration(
-                        labelText: 'Nome da Lista',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                        ),
-                        hintText: 'Ex: Supermercado, Farmácia...',
-                        prefixIcon: const Icon(Icons.shopping_basket),
-                        filled: true,
-                        fillColor: AppTheme.softGrey,
-                      ),
-                      autofocus: true,
-                      controller: TextEditingController(text: listName),
-                    ),
-                    const SizedBox(height: AppConstants.paddingMedium),
-                    Consumer<AppSettingsProvider>(
-                      builder: (context, settingsProvider, child) {
-                        return TextField(
-                          onChanged: (value) => budgetText = value,
-                          decoration: InputDecoration(
-                            labelText: 'Orçamento (opcional)',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                            ),
-                            hintText: 'Ex: 50.00',
-                            prefixIcon: const Icon(Icons.attach_money),
-                            prefixText: '${settingsProvider.primaryCurrency.symbol} ',
-                            filled: true,
-                            fillColor: AppTheme.softGrey,
-                            suffixIcon: list.budget != null
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      setDialogState(() {
-                                        budgetText = '';
-                                      });
-                                      final controller = TextEditingController(text: '');
-                                      controller.selection = TextSelection.fromPosition(
-                                        TextPosition(offset: controller.text.length),
-                                      );
-                                    },
-                                    tooltip: 'Remover orçamento',
-                                  )
-                                : null,
-                          ),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          controller: TextEditingController(text: budgetText),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancelar'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (listName.trim().isNotEmpty) {
-                      double? budget;
-                      if (budgetText.isNotEmpty) {
-                        budget = double.tryParse(budgetText.replaceAll(',', '.'));
-                      }
-                      
-                      // Atualizar a lista
-                      setState(() {
-                        list.name = listName.trim();
-                        list.budget = budget;
-                      });
-                      
-                      await _saveShoppingLists();
-                      
-                      Navigator.pop(context);
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Salvar'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ShoppingListDialog(
+        originalList: list,
+        isEditing: true,
+      ),
     );
+
+    if (result != null) {
+      final String listName = result['name'];
+      final double? budget = result['budget'];
+
+      setState(() {
+        list.name = listName;
+        list.budget = budget;
+      });
+      await _saveShoppingLists();
+    }
   }
 
   // Remove uma lista de compras
