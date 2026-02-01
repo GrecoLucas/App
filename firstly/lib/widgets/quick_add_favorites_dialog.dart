@@ -40,13 +40,14 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
   void _loadFavoriteItems() async {
     setState(() => _isLoading = true);
     final items = await FavoriteItemsService.getSortedFavoriteItems(FavoriteSortCriteria.mostUsed);
-    print('Carregados ${items.length} itens favoritos: ${items.map((e) => e.name).toList()}');
     
-    setState(() {
-      _favoriteItems = items;
-      _filteredItems = items;
-      _isLoading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _favoriteItems = items;
+        _filteredItems = items;
+        _isLoading = false;
+      });
+    }
   }
 
   void _filterItems() {
@@ -59,13 +60,10 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
   }
 
   void _toggleItemSelection(FavoriteItem item) {
-    print('Toggling selection for item: ${item.name}');
     setState(() {
       if (_selectedItems.containsKey(item.id)) {
-        print('Removendo item ${item.name} da seleção');
         _selectedItems.remove(item.id);
       } else {
-        print('Adicionando item ${item.name} à seleção');
         _selectedItems[item.id] = FavoriteItemSelection(
           favoriteItem: item,
           price: item.defaultPrice,
@@ -73,7 +71,6 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
         );
       }
     });
-    print('Total de itens selecionados: ${_selectedItems.length}');
   }
 
   void _updateSelectedItem(String itemId, double price, int quantity) {
@@ -95,8 +92,6 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
         };
       }).toList();
 
-      print('Adicionando ${itemsToAdd.length} itens favoritos: $itemsToAdd');
-
       // Incrementa o uso dos itens selecionados
       for (final selection in _selectedItems.values) {
         await FavoriteItemsService.incrementItemUsage(selection.favoriteItem.name);
@@ -104,76 +99,112 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
 
       widget.onItemsSelected(itemsToAdd);
       Navigator.of(context).pop();
-    } else {
-      print('Nenhum item selecionado para adicionar');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final dialogHeight = screenHeight * 0.8;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 400;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+    return Container(
+      constraints: BoxConstraints(
+        minHeight: screenHeight * 0.5,
+        maxHeight: screenHeight * 0.9,
       ),
-      child: Container(
-        height: dialogHeight,
-        width: double.maxFinite,
-        padding: EdgeInsets.all(AppConstants.paddingLarge),
-        child: Column(
-          children: [
-            _buildHeader(),
-            SizedBox(height: AppConstants.paddingMedium),
-            _buildSearchBar(),
-            SizedBox(height: AppConstants.paddingMedium),
-            Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredItems.isEmpty 
-                  ? _buildEmptyState()
-                  : _buildFavoritesList(),
+      padding: EdgeInsets.only(
+        bottom: bottomPadding + AppConstants.getResponsivePadding(context, AppConstants.paddingSmall),
+        top: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        left: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+        right: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppConstants.radiusXLarge),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle visual
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            if (_selectedItems.isNotEmpty) ...[
-              SizedBox(height: AppConstants.paddingMedium),
-              _buildSelectedItemsPreview(),
-              SizedBox(height: AppConstants.paddingMedium),
-            ],
-            _buildActionButtons(),
-          ],
-        ),
-      ),
-    );
-  }
+          ),
 
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: AppTheme.primaryGradient,
-            borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                ),
+                child: Icon(
+                  Icons.playlist_add,
+                  color: Colors.white,
+                  size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
+                ),
+              ),
+              SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adicionar Favoritos',
+                      style: AppStyles.headingMedium.copyWith(
+                        fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.headingMedium.fontSize! * 1.1),
+                      ),
+                    ),
+                    if (_selectedItems.isNotEmpty)
+                      Text(
+                        '${_selectedItems.length} selecionado(s)',
+                        style: AppStyles.captionGrey.copyWith(
+                          color: AppTheme.primaryGreen,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+              ),
+            ],
           ),
-          child: const Icon(
-            Icons.playlist_add,
-            color: Colors.white,
-            size: 24,
+
+          SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+          _buildSearchBar(),
+          SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+
+          Expanded(
+            child: _isLoading 
+              ? const Center(child: CircularProgressIndicator())
+              : _filteredItems.isEmpty 
+                ? _buildEmptyState()
+                : _buildFavoritesList(),
           ),
-        ),
-        SizedBox(width: AppConstants.paddingMedium),
-        Expanded(
-          child: Text(
-            'Adicionar Favoritos',
-            style: AppStyles.headingMedium,
-          ),
-        ),
-        IconButton(
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.close),
-        ),
-      ],
+
+          if (_selectedItems.isNotEmpty) ...[
+            SizedBox(height: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+            _buildActionButtons(context),
+          ],
+        ],
+      ),
     );
   }
 
@@ -188,6 +219,7 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
         ),
         filled: true,
         fillColor: AppTheme.softGrey,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     );
   }
@@ -202,7 +234,7 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
             size: 64,
             color: Colors.grey[400],
           ),
-          SizedBox(height: AppConstants.paddingMedium),
+          const SizedBox(height: 16),
           Text(
             _searchController.text.isNotEmpty 
               ? 'Nenhum favorito encontrado'
@@ -219,6 +251,7 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
   Widget _buildFavoritesList() {
     return ListView.builder(
       itemCount: _filteredItems.length,
+      padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
         final item = _filteredItems[index];
         final isSelected = _selectedItems.containsKey(item.id);
@@ -229,7 +262,7 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
 
   Widget _buildFavoriteItemCard(FavoriteItem item, bool isSelected) {
     return Container(
-      margin: EdgeInsets.only(bottom: AppConstants.paddingSmall),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isSelected ? AppTheme.lightGreen : Colors.white,
         borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
@@ -245,31 +278,45 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
           onTap: () => _toggleItemSelection(item),
           borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
           child: Padding(
-            padding: EdgeInsets.all(AppConstants.paddingMedium),
+            padding: const EdgeInsets.all(12),
             child: Column(
               children: [
                 Row(
                   children: [
-                    Checkbox(
-                      value: isSelected,
-                      onChanged: (_) => _toggleItemSelection(item),
-                      activeColor: AppTheme.primaryGreen,
-                    ),
-                    SizedBox(width: AppConstants.paddingSmall),
+                    // Checkbox customizado
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 24,
+                      height: 24,
                       decoration: BoxDecoration(
-                        gradient: AppTheme.primaryGradient,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                        color: isSelected ? AppTheme.primaryGreen : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primaryGreen : Colors.grey[400]!,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Icon(
+                      child: isSelected 
+                        ? const Icon(Icons.check, size: 16, color: Colors.white)
+                        : null,
+                    ),
+                    const SizedBox(width: 12),
+                    
+                    // Ícone do item
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Colors.white : AppTheme.softGrey,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
                         Icons.shopping_basket,
-                        color: Colors.white,
+                        color: isSelected ? AppTheme.primaryGreen : Colors.grey[600],
                         size: 20,
                       ),
                     ),
-                    SizedBox(width: AppConstants.paddingMedium),
+                    const SizedBox(width: 12),
+                    
+                    // Informações
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,38 +324,27 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
                           Text(
                             item.name,
                             style: AppStyles.bodyLarge.copyWith(
-                              fontWeight: FontWeight.w600,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               color: isSelected ? AppTheme.darkGreen : Colors.black87,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Row(
                             children: [
-                              if (item.defaultPrice > 0) ...[
-                                Text(
-                                  '€${item.defaultPrice.toStringAsFixed(2)}',
-                                  style: AppStyles.captionGrey.copyWith(
-                                    color: AppTheme.primaryGreen,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(width: AppConstants.paddingSmall),
-                              ],
                               Text(
                                 'Qtd: ${item.defaultQuantity}',
                                 style: AppStyles.captionGrey,
                               ),
-                              SizedBox(width: AppConstants.paddingSmall),
-                              Icon(
-                                Icons.star,
-                                size: 12,
-                                color: Colors.amber[600],
-                              ),
-                              SizedBox(width: 2),
-                              Text(
-                                '${item.usageCount}',
-                                style: AppStyles.captionGrey,
-                              ),
+                              if (item.defaultPrice > 0) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  '€${item.defaultPrice.toStringAsFixed(2)}',
+                                  style: AppStyles.captionGrey.copyWith(
+                                    color: AppTheme.primaryGreen,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -326,29 +362,15 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
     );
   }
 
-  Widget _buildDefaultIcon() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-      ),
-      child: const Icon(
-        Icons.shopping_basket,
-        color: Colors.white,
-        size: 20,
-      ),
-    );
-  }
-
   Widget _buildEditControls(FavoriteItem item) {
     final selection = _selectedItems[item.id]!;
     return Container(
-      margin: EdgeInsets.only(top: AppConstants.paddingMedium),
-      padding: EdgeInsets.all(AppConstants.paddingMedium),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-        border: Border.all(color: Colors.grey[300]!),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -359,13 +381,11 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
               decoration: InputDecoration(
                 labelText: 'Preço',
                 prefixText: '€ ',
+                isDense: true,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingSmall,
-                  vertical: AppConstants.paddingSmall,
-                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (value) {
@@ -374,31 +394,32 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
               },
             ),
           ),
-          SizedBox(width: AppConstants.paddingMedium),
+          const SizedBox(width: 12),
           Expanded(
-            child: DropdownButtonFormField<int>(
-              value: selection.quantity,
-              decoration: InputDecoration(
-                labelText: 'Qtd',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: AppConstants.paddingSmall,
-                  vertical: AppConstants.paddingSmall,
+            child: Container(
+              height: 48, // Altura fixa para alinhar com o campo de texto
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey[400]!),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  value: selection.quantity,
+                  isExpanded: true,
+                  items: List.generate(20, (index) => index + 1)
+                      .map((quantity) => DropdownMenuItem<int>(
+                            value: quantity,
+                            child: Text('$quantity'),
+                          ))
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      _updateSelectedItem(item.id, selection.price, value);
+                    }
+                  },
                 ),
               ),
-              items: List.generate(20, (index) => index + 1)
-                  .map((quantity) => DropdownMenuItem<int>(
-                        value: quantity,
-                        child: Text('$quantity'),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  _updateSelectedItem(item.id, selection.price, value);
-                }
-              },
             ),
           ),
         ],
@@ -406,71 +427,28 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
     );
   }
 
-  Widget _buildSelectedItemsPreview() {
-    return Container(
-      padding: EdgeInsets.all(AppConstants.paddingMedium),
-      decoration: BoxDecoration(
-        color: AppTheme.lightGreen,
-        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-        border: Border.all(color: AppTheme.primaryGreen),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.shopping_cart,
-            color: AppTheme.primaryGreen,
-            size: AppConstants.iconMedium,
+  Widget _buildActionButtons(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _addSelectedItems,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryGreen,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
           ),
-          SizedBox(width: AppConstants.paddingSmall),
-          Expanded(
-            child: Text(
-              '${_selectedItems.length} item${_selectedItems.length != 1 ? 's' : ''} selecionado${_selectedItems.length != 1 ? 's' : ''}',
-              style: AppStyles.bodyMedium.copyWith(
-                color: AppTheme.darkGreen,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Text(
-            'Total: €${_selectedItems.values.fold<double>(0.0, (sum, selection) => sum + (selection.price * selection.quantity)).toStringAsFixed(2)}',
-            style: AppStyles.bodyMedium.copyWith(
-              color: AppTheme.darkGreen,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
+          elevation: 2,
+        ),
+        child: Text(
+          'Adicionar ${_selectedItems.length} item(s) - Total: €${_selectedItems.values.fold<double>(0.0, (sum, s) => sum + (s.price * s.quantity)).toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(width: AppConstants.paddingMedium),
-        Expanded(
-          flex: 2,
-          child: ElevatedButton(
-            onPressed: _selectedItems.isNotEmpty ? () {
-              print('Botão "Adicionar" pressionado com ${_selectedItems.length} itens selecionados');
-              _addSelectedItems();
-            } : null,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: AppConstants.paddingMedium),
-            ),
-            child: Text(
-              'Adicionar ${_selectedItems.length} item${_selectedItems.length != 1 ? 's' : ''}',
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

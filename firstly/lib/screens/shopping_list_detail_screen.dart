@@ -236,24 +236,31 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
   // Adiciona múltiplos produtos favoritos à lista
   void _addFavoriteProducts() async {
-    showDialog<void>(
+    showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (context) => QuickAddFavoritesDialog(
         onItemsSelected: (items) async {
-          print('Recebidos ${items.length} itens favoritos: $items');
-          List<Item> newItems = [];
+          if (items.isEmpty) return;
           
-            // Lista local apenas - adicionar diretamente
-            setState(() {
-              for (final item in newItems) {
-                widget.shoppingList.addItem(item);
-              }
-            });
-            
-            widget.onUpdate();
-            
-            SnackBarService.success(context, '${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos');
-          },
+          List<Item> newItems = items.map((data) => Item(
+            name: data['name'],
+            price: data['price'],
+            quantity: data['quantity'],
+          )).toList();
+          
+          // Lista local apenas - adicionar diretamente
+          setState(() {
+            for (final item in newItems) {
+              widget.shoppingList.addItem(item);
+            }
+          });
+          
+          widget.onUpdate();
+          
+          SnackBarService.success(context, '${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} da lista de favoritos');
+        },
       ),
     );
   }

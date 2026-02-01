@@ -268,9 +268,17 @@ class _FavoriteItemsDialogState extends State<FavoriteItemsDialog> {
                 Container(
                   width: 48,
                   height: 48,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryGreen.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.shopping_basket,

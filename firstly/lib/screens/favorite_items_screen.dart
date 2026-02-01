@@ -516,14 +516,24 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
 
   Widget _buildDefaultIcon() {
     return Container(
+      width: 48,
+      height: 48,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryGreen.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: const Icon(
         Icons.shopping_basket,
         color: Colors.white,
-        size: 28,
+        size: 24,
       ),
     );
   }
