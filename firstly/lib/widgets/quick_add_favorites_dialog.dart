@@ -85,8 +85,12 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
   void _addSelectedItems() async {
     if (_selectedItems.isNotEmpty) {
       final itemsToAdd = _selectedItems.values.map((selection) {
+        final name = selection.favoriteItem.name.length > 24 
+            ? selection.favoriteItem.name.substring(0, 24) 
+            : selection.favoriteItem.name;
+            
         return {
-          'name': selection.favoriteItem.name,
+          'name': name,
           'price': selection.price,
           'quantity': selection.quantity,
         };

@@ -254,6 +254,7 @@ class _AddProductDialogState extends State<AddProductDialog> {
                   // Campo nome do produto
                   TextField(
                     controller: nameController,
+                    maxLength: 24, // Enforce 24 char limit
                     onChanged: (value) {
                       productName = value;
                       _checkIfFavorite();

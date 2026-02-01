@@ -72,7 +72,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
     final isSmallScreen = screenWidth < 400;
     
     return Container(
-      margin: EdgeInsets.only(bottom: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)),
+      margin: EdgeInsets.only(bottom: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)), // Reduced margin
       decoration: BoxDecoration(
         gradient: AppTheme.cardGradient,
         borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
@@ -83,14 +83,14 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
         child: Opacity(
           opacity: widget.item.isCompleted ? 0.6 : 1.0,
           child: Padding(
-            padding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+            padding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)), // Reduced padding
             child: Column(
               children: [
                 Row(
                   children: [
                     // Checkbox para indicar se está no carrinho
                     Transform.scale(
-                      scale: isSmallScreen ? 1.0 : 1.2,
+                      scale: isSmallScreen ? 1.0 : 1.1, // Slightly reduced scale
                       child: Checkbox(
                         value: widget.item.isCompleted,
                         onChanged: (bool? value) {
@@ -109,10 +109,10 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                         ),
                       ),
                     ),
-                  SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)),
+                  SizedBox(width: AppConstants.getResponsivePadding(context, 4)), // Reduced gap
                   Container(
-                    width: isSmallScreen ? 50 : 60,
-                    height: isSmallScreen ? 50 : 60,
+                    width: isSmallScreen ? 36 : 44, // Reduced size
+                    height: isSmallScreen ? 36 : 44, // Reduced size
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
                       borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
@@ -125,18 +125,18 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: isSmallScreen ? 12 : 14,
+                            fontSize: isSmallScreen ? 11 : 13, // Reduced font
                           ),
                         ),
                         Icon(
                           Icons.shopping_basket,
                           color: Colors.white.withOpacity(0.8),
-                          size: isSmallScreen ? 14 : 16,
+                          size: isSmallScreen ? 12 : 14, // Reduced icon
                         ),
                       ],
                     ),
                   ),
-                  SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingLarge)),
+                  SizedBox(width: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium)), // Reduced gap
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -152,72 +152,38 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                         ),
                         const SizedBox(height: 4),
                         // Informações de preço em layout responsivo
-                        isSmallScreen
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Valor total (maior)
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.euro,
-                                        size: AppConstants.iconSmall,
-                                        color: AppTheme.primaryGreen,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${(widget.item.price * widget.item.quantity).toStringAsFixed(2)}',
-                                        style: AppStyles.priceStyle.copyWith(
-                                          fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
+                          runSpacing: 2,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.euro,
+                                  size: AppConstants.iconSmall,
+                                  color: AppTheme.primaryGreen,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${(widget.item.price * widget.item.quantity).toStringAsFixed(2)}',
+                                  style: AppStyles.priceStyle.copyWith(
+                                    fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
+                                    fontWeight: FontWeight.w700,
                                   ),
-                                  // Preço unitário (menor)
-                                  if (widget.item.quantity > 1) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '€${widget.item.price.toStringAsFixed(2)} cada',
-                                      style: AppStyles.captionGrey.copyWith(
-                                        fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              )
-                            : Row(
-                                children: [
-                                  // Valor total (maior)
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.euro,
-                                        size: AppConstants.iconSmall,
-                                        color: AppTheme.primaryGreen,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${(widget.item.price * widget.item.quantity).toStringAsFixed(2)}',
-                                        style: AppStyles.priceStyle.copyWith(
-                                          fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // Preço unitário (menor)
-                                  if (widget.item.quantity > 1) ...[
-                                    const SizedBox(width: AppConstants.paddingMedium),
-                                    Text(
-                                      '(€${widget.item.price.toStringAsFixed(2)} cada)',
-                                      style: AppStyles.captionGrey.copyWith(
-                                        fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                                ),
+                              ],
+                            ),
+                            if (widget.item.quantity > 1)
+                              Text(
+                                '(€${widget.item.price.toStringAsFixed(2)} cada)',
+                                style: AppStyles.captionGrey.copyWith(
+                                  fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
+                                ),
                               ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

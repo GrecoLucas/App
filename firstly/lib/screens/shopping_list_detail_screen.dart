@@ -32,6 +32,8 @@ class ShoppingListDetailScreen extends StatefulWidget {
 class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
   SortCriteria _currentSortCriteria = SortCriteria.smart;
+  double _itemScale = 1.0;
+  int _currentTab = 0; // 0: Comprando, 1: Comprado
 
   @override
   void initState() {
@@ -57,8 +59,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     });
   }
 
-
-
   // Atualiza o critério de ordenação
   void _updateSortCriteria(SortCriteria criteria) async {
     setState(() {
@@ -66,6 +66,13 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     });
     await StorageService.saveSortPreference(criteria);
   }
+
+  void _updateItemScale(double newScale) {
+    setState(() {
+      _itemScale = newScale;
+    });
+  }
+
   // Adiciona um novo produto à lista
   void _addProduct() async {
     final result = await showModalBottomSheet<Map<String, dynamic>>(
@@ -131,25 +138,12 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     });
     
     if (item.isCompleted) {
-      SnackBarService.success(context, 'Marcado como comprado');
+      SnackBarService.success(context, 'Movido para Comprados');
+    } else {
+      SnackBarService.success(context, 'Movido para Comprando');
     }
     
     widget.onUpdate();
-  }
-
-  // Alterna o estado de todos os itens
-  void _toggleAllItems() {
-    final allCompleted = widget.shoppingList.items.every((item) => item.isCompleted);
-    
-    setState(() {
-      for (var item in widget.shoppingList.items) {
-        item.isCompleted = !allCompleted;
-      }
-    });
-    
-    widget.onUpdate();
-    
-    SnackBarService.success(context, allCompleted ? 'Todos os itens desmarcados' : 'Todos os itens marcados');
   }
 
   // Envia itens marcados para a despensa
@@ -265,7 +259,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
   }
 
-
   // Adiciona produto via scanner de código de barras
   void _addProductViaScanner() async {
     final scannedItem = await Navigator.push<ScannedItem>(
@@ -276,8 +269,12 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
 
     if (scannedItem != null) {
+      final name = scannedItem.name.length > 24 
+          ? scannedItem.name.substring(0, 24) 
+          : scannedItem.name;
+          
       final newItem = Item(
-        name: scannedItem.name,
+        name: name,
         price: scannedItem.price,
         quantity: scannedItem.quantity,
       );
@@ -296,7 +293,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   Widget _buildBudgetProgress() {
     final budget = widget.shoppingList.budget!;
     final totalPrice = widget.shoppingList.totalPrice;
-    final percentage = (totalPrice / budget).clamp(0.0, 1.0);
     final isExceeded = totalPrice > budget;
     
     return Column(
@@ -350,11 +346,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 gradient: AppTheme.primaryGradient,
                 borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
               ),
-              child: const Icon(
-                Icons.shopping_basket,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.shopping_basket, color: Colors.white, size: 20),
             ),
             const SizedBox(width: AppConstants.paddingMedium),
             Expanded(
@@ -368,17 +360,43 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         ),
         actions: [
           if (widget.shoppingList.items.isNotEmpty) ...[
-            IconButton(
-              icon: Icon(
-                widget.shoppingList.items.every((i) => i.isCompleted) 
-                    ? Icons.remove_done
-                    : Icons.done_all,
-                color: AppTheme.primaryGreen,
-              ),
-              onPressed: _toggleAllItems,
-              tooltip: widget.shoppingList.items.every((i) => i.isCompleted)
-                  ? 'Desmarcar todos'
-                  : 'Marcar todos',
+            // Menu de Densidade/Tamanho dos Itens
+            PopupMenuButton<double>(
+              icon: const Icon(Icons.unfold_more, color: AppTheme.primaryGreen),
+              tooltip: 'Visualização da lista',
+              onSelected: _updateItemScale,
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 0.8,
+                  child: Row(
+                    children: [
+                      Icon(Icons.view_headline, size: 18),
+                      SizedBox(width: 8),
+                      Text('Compacto'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 1.0,
+                  child: Row(
+                    children: [
+                      Icon(Icons.view_agenda, size: 18),
+                      SizedBox(width: 8),
+                      Text('Padrão'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 1.25,
+                  child: Row(
+                    children: [
+                      Icon(Icons.view_stream, size: 18),
+                      SizedBox(width: 8),
+                      Text('Expandido'),
+                    ],
+                  ),
+                ),
+              ],
             ),
             SortOptionsWidget(
               currentCriteria: _currentSortCriteria,
@@ -389,18 +407,82 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         ],
         backgroundColor: Colors.white,
         elevation: 0,
-        shadowColor: Colors.black12,
         surfaceTintColor: Colors.transparent,
       ),
       body: Column(
         children: [
           _buildSummaryCard(),
+          _buildTabButtons(),
           Expanded(
             child: widget.shoppingList.items.isEmpty
                 ? _buildEmptyState()
                 : _buildProductsList(),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTabButtons() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+        boxShadow: const [AppStyles.softShadow], 
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTabButton(0, 'Comprando', Icons.shopping_cart_outlined),
+          ),
+          Container(width: 1, height: 24, color: Colors.grey[300]),
+          Expanded(
+            child: _buildTabButton(1, 'Comprado', Icons.check_circle_outline),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabButton(int index, String label, IconData icon) {
+    final isSelected = _currentTab == index;
+    final count = index == 0 
+        ? widget.shoppingList.items.where((i) => !i.isCompleted).length
+        : widget.shoppingList.items.where((i) => i.isCompleted).length;
+
+    return InkWell(
+      onTap: () => setState(() => _currentTab = index),
+      borderRadius: index == 0 
+          ? const BorderRadius.horizontal(left: Radius.circular(AppConstants.radiusLarge))
+          : const BorderRadius.horizontal(right: Radius.circular(AppConstants.radiusLarge)),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.lightGreen : Colors.transparent,
+          borderRadius: index == 0 
+              ? const BorderRadius.horizontal(left: Radius.circular(AppConstants.radiusLarge))
+              : const BorderRadius.horizontal(right: Radius.circular(AppConstants.radiusLarge)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? AppTheme.primaryGreen : Colors.grey[600],
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$label ($count)',
+              style: TextStyle(
+                color: isSelected ? AppTheme.primaryGreen : Colors.grey[600],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -597,7 +679,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           SizedBox(
-            height: MediaQuery.of(context).size.height * 0.6,
+            height: MediaQuery.of(context).size.height * 0.5,
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(AppConstants.paddingXLarge),
@@ -655,9 +737,33 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     );
   }
 
-  Widget _buildProductsList() {
+Widget _buildProductsList() {
     final sortedItems = widget.shoppingList.getSortedItems(_currentSortCriteria);
+    final filteredItems = sortedItems.where((item) {
+      if (_currentTab == 0) return !item.isCompleted;
+      return item.isCompleted;
+    }).toList();
     
+    if (filteredItems.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _currentTab == 0 ? Icons.shopping_cart_outlined : Icons.check_circle_outline,
+              size: 64,
+              color: Colors.grey[300],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _currentTab == 0 ? 'Tudo comprado!' : 'Nenhum item comprado ainda',
+              style: AppStyles.bodyLarge.copyWith(color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      );
+    }
+
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       color: AppTheme.primaryGreen,
@@ -665,15 +771,22 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge),
         child: ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: sortedItems.length,
+          itemCount: filteredItems.length,
+          padding: const EdgeInsets.only(bottom: 100),
           itemBuilder: (context, index) {
-            final item = sortedItems[index];
+            final item = filteredItems[index];
             
-            return EnhancedProductCard(
-              item: item,
-              onEdit: () => _editProduct(item),
-              onDelete: () => _removeProduct(item),
-              onToggle: () => _toggleItemCompletion(item),
+            // Se o seu EnhancedProductCard aceitar uma escala de texto:
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(_itemScale),
+              ),
+              child: EnhancedProductCard(
+                item: item,
+                onEdit: () => _editProduct(item),
+                onDelete: () => _removeProduct(item),
+                onToggle: () => _toggleItemCompletion(item),
+              ),
             );
           },
         ),
