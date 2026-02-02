@@ -1,4 +1,4 @@
-package com.smartshop.shopping_list
+package com.grecolucas.smartshop
 
 import io.flutter.embedding.android.FlutterActivity
 
