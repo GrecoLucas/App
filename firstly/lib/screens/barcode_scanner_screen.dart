@@ -62,9 +62,19 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       print('Buscando produto nas APIs...');
       final productInfo = await ProductApiService.getProductInfo(scannedBarcode);
       
-      if (productInfo != null) {
+      String? suggestedName = productInfo?.name;
+      if (suggestedName != null) {
+        final lowerName = suggestedName.toLowerCase();
+        if (lowerName.contains('unknown') || 
+            lowerName.contains('produto desconhecido') ||
+            lowerName.trim().isEmpty) {
+          suggestedName = null;
+        }
+      }
+
+      if (suggestedName != null) {
         // Produto encontrado na API - mostrar dialog com dados preenchidos
-        _showNewItemDialog(scannedBarcode, suggestedName: productInfo.name);
+        _showNewItemDialog(scannedBarcode, suggestedName: suggestedName);
       } else {
         // Produto não encontrado em nenhuma API - mostrar dialog vazio
         _showNewItemDialog(scannedBarcode);
@@ -211,7 +221,10 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
   void initState() {
     super.initState();
     nameController = TextEditingController(text: widget.item.name);
-    priceController = TextEditingController(text: widget.item.price.toStringAsFixed(2));
+    priceController = TextEditingController(
+        text: widget.item.price > 0
+            ? widget.item.price.toStringAsFixed(2)
+            : '');
     quantity = widget.item.quantity;
     _checkPantry();
   }
@@ -239,170 +252,237 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-      ),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-            ),
-            child: const Icon(
-              Icons.qr_code,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: AppConstants.paddingMedium),
-          const Expanded(
-            child: Text('Produto Encontrado'),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+          maxWidth: 600,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+          boxShadow: [AppStyles.mediumShadow],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Header
             Container(
-              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
               decoration: BoxDecoration(
-                color: AppTheme.lightGreen,
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                gradient: AppTheme.primaryGradient,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppConstants.radiusXLarge),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: AppTheme.primaryGreen,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Este produto já foi escaneado antes. Você pode editar as informações.',
-                      style: AppStyles.bodyMedium.copyWith(
-                        color: AppTheme.darkGreen,
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusMedium),
                     ),
+                    child: const Icon(Icons.edit, color: Colors.white),
+                  ),
+                  const SizedBox(width: AppConstants.paddingMedium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Editar Produto',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Código: ${widget.item.barcode}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: widget.onCancel,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: AppConstants.paddingLarge),
-            TextField(
-              controller: nameController,
-              onChanged: (value) => _checkPantry(),
-              decoration: InputDecoration(
-                labelText: 'Nome do Produto',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-              ),
-            ),
-            // Info da despensa (abaixo do nome)
-            if (nameController.text.trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
-                child: Row(
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 12,
-                      color: _pantryMatch == null
-                          ? Colors.grey
-                          : _pantryMatch!.quantity > 0
-                              ? Colors.orange.shade700
-                              : Colors.red.shade700,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _pantryMatch == null
-                          ? 'Novo na despensa'
-                          : '${_pantryMatch!.quantity} na despensa',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _pantryMatch == null
-                            ? Colors.grey
-                            : _pantryMatch!.quantity > 0
-                                ? Colors.orange.shade700
-                                : Colors.red.shade700,
+                    TextField(
+                      controller: nameController,
+                      onChanged: (value) => _checkPantry(),
+                      decoration: InputDecoration(
+                        labelText: 'Nome do Produto',
+                        prefixIcon: const Icon(Icons.shopping_bag_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusMedium),
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.softGrey,
                       ),
+                      style: AppStyles.bodyLarge,
+                    ),
+
+                    // Pantry Status
+                    if (nameController.text.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            top: 8, left: 4, bottom: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 16,
+                              color: _pantryMatch == null
+                                  ? Colors.grey
+                                  : _pantryMatch!.quantity > 0
+                                      ? Colors.orange.shade700
+                                      : Colors.red.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _pantryMatch == null
+                                  ? 'Novo na despensa'
+                                  : '${_pantryMatch!.quantity} unidade(s) na despensa',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _pantryMatch == null
+                                    ? Colors.grey
+                                    : _pantryMatch!.quantity > 0
+                                        ? Colors.orange.shade700
+                                        : Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const SizedBox(height: AppConstants.paddingMedium),
+
+                    const SizedBox(height: AppConstants.paddingSmall),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: priceController,
+                            decoration: InputDecoration(
+                              labelText: 'Preço',
+                              prefixIcon: const Icon(Icons.euro),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusMedium),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.softGrey,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            style: AppStyles.bodyLarge,
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.paddingMedium),
+                        Expanded(
+                          flex: 2,
+                          child: DropdownButtonFormField<int>(
+                            value: quantity,
+                            decoration: InputDecoration(
+                              labelText: 'Qtd.',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusMedium),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.softGrey,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 16),
+                            ),
+                            items: List.generate(20, (index) => index + 1)
+                                .map((qty) => DropdownMenuItem<int>(
+                                      value: qty,
+                                      child: Text('$qty'),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                quantity = value ?? 1;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            const SizedBox(height: AppConstants.paddingMedium),
-            TextField(
-              controller: priceController,
-              decoration: InputDecoration(
-                labelText: 'Preço',
-                prefixText: '€ ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
             ),
-            const SizedBox(height: AppConstants.paddingMedium),
-            DropdownButtonFormField<int>(
-              value: quantity,
-              decoration: InputDecoration(
-                labelText: 'Quantidade',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+
+            // Actions
+            Padding(
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final price = double.tryParse(
+                          priceController.text
+                              .replaceAll(',', '.')
+                              .replaceAll('€', '')
+                              .trim(),
+                        ) ??
+                        0.0;
+
+                    final updatedItem = ScannedItem.create(
+                      barcode: widget.item.barcode,
+                      name: nameController.text.trim(),
+                      price: price,
+                      quantity: quantity,
+                    );
+
+                    widget.onConfirm(updatedItem);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusMedium),
+                    ),
+                  ),
+                  child: const Text(
+                    'Atualizar e Adicionar ',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
               ),
-              items: List.generate(20, (index) => index + 1)
-                  .map((qty) => DropdownMenuItem<int>(
-                        value: qty,
-                        child: Text('$qty'),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  quantity = value ?? 1;
-                });
-              },
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: widget.onCancel,
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final price = double.tryParse(
-              priceController.text.replaceAll(',', '.').replaceAll('€', '').trim(),
-            ) ?? 0.0;
-            
-            final updatedItem = ScannedItem.create(
-              barcode: widget.item.barcode,
-              name: nameController.text.trim(),
-              price: price,
-              quantity: quantity,
-            );
-            
-            widget.onConfirm(updatedItem);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Adicionar à Lista'),
-        ),
-      ],
     );
   }
 }
@@ -461,202 +541,246 @@ class _NewItemDialogState extends State<_NewItemDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
-      ),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
-              borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
-            ),
-            child: const Icon(
-              Icons.add_shopping_cart,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: AppConstants.paddingMedium),
-          const Expanded(
-            child: Text('Novo Produto'),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      backgroundColor: Colors.transparent,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+          maxWidth: 600,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+          boxShadow: [AppStyles.mediumShadow],
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Header
             Container(
-              padding: const EdgeInsets.all(AppConstants.paddingMedium),
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
               decoration: BoxDecoration(
-                color: AppTheme.softGrey,
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                gradient: AppTheme.primaryGradient,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppConstants.radiusXLarge),
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.qr_code,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Código: ${widget.barcode}',
-                      style: AppStyles.captionGrey,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusMedium),
                     ),
+                    child: const Icon(Icons.add_shopping_cart,
+                        color: Colors.white),
+                  ),
+                  const SizedBox(width: AppConstants.paddingMedium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Novo Produto',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Código: ${widget.barcode}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: widget.onCancel,
                   ),
                 ],
               ),
             ),
-            // Mostrar informação se o nome foi encontrado automaticamente
-            if (widget.suggestedName != null) ...[
-              const SizedBox(height: AppConstants.paddingMedium),
-              Container(
-                padding: const EdgeInsets.all(AppConstants.paddingMedium),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGreen,
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                child: Row(
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
-                      Icons.check_circle_outline,
-                      color: AppTheme.primaryGreen,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Nome encontrado automaticamente! Você pode editá-lo se necessário.',
-                        style: AppStyles.bodyMedium.copyWith(
-                          color: AppTheme.darkGreen,
+                    TextField(
+                      controller: nameController,
+                      onChanged: (value) => _checkPantry(),
+                      decoration: InputDecoration(
+                        labelText: 'Nome do Produto',
+                        prefixIcon: const Icon(Icons.shopping_bag_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppConstants.radiusMedium),
                         ),
+                        filled: true,
+                        fillColor: AppTheme.softGrey,
                       ),
+                      style: AppStyles.bodyLarge,
+                      autofocus: widget.suggestedName ==
+                          null, // Focus if name is empty
+                    ),
+
+                    // Pantry Status
+                    if (nameController.text.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            top: 8, left: 4, bottom: 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.inventory_2_outlined,
+                              size: 16,
+                              color: _pantryMatch == null
+                                  ? Colors.grey
+                                  : _pantryMatch!.quantity > 0
+                                      ? Colors.orange.shade700
+                                      : Colors.red.shade700,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _pantryMatch == null
+                                  ? 'Novo na despensa'
+                                  : '${_pantryMatch!.quantity} unidade(s) na despensa',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _pantryMatch == null
+                                    ? Colors.grey
+                                    : _pantryMatch!.quantity > 0
+                                        ? Colors.orange.shade700
+                                        : Colors.red.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      const SizedBox(height: AppConstants.paddingMedium),
+
+                    const SizedBox(height: AppConstants.paddingSmall),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: priceController,
+                            decoration: InputDecoration(
+                              labelText: 'Preço',
+                              prefixIcon: const Icon(Icons.euro),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusMedium),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.softGrey,
+                            ),
+                            keyboardType: const TextInputType.numberWithOptions(
+                                decimal: true),
+                            style: AppStyles.bodyLarge,
+                          ),
+                        ),
+                        const SizedBox(width: AppConstants.paddingMedium),
+                        Expanded(
+                          flex: 2,
+                          child: DropdownButtonFormField<int>(
+                            value: quantity,
+                            decoration: InputDecoration(
+                              labelText: 'Qtd.',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    AppConstants.radiusMedium),
+                              ),
+                              filled: true,
+                              fillColor: AppTheme.softGrey,
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 16),
+                            ),
+                            items: List.generate(20, (index) => index + 1)
+                                .map((qty) => DropdownMenuItem<int>(
+                                      value: qty,
+                                      child: Text('$qty'),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                quantity = value ?? 1;
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ],
-            const SizedBox(height: AppConstants.paddingLarge),
-            TextField(
-              controller: nameController,
-              onChanged: (value) => _checkPantry(),
-              decoration: InputDecoration(
-                labelText: 'Nome do Produto',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-              ),
-              autofocus: widget.suggestedName == null, // Só foca se não tem nome sugerido
             ),
-            // Info da despensa (abaixo do nome)
-            if (nameController.text.trim().isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.inventory_2_outlined,
-                      size: 12,
-                      color: _pantryMatch == null
-                          ? Colors.grey
-                          : _pantryMatch!.quantity > 0
-                              ? Colors.orange.shade700
-                              : Colors.red.shade700,
+
+            // Actions
+            Padding(
+              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (nameController.text.trim().isEmpty) {
+                      SnackBarService.warning(
+                          context, 'Digite o nome do produto');
+                      return;
+                    }
+
+                    final price = double.tryParse(
+                          priceController.text
+                              .replaceAll(',', '.')
+                              .replaceAll('€', '')
+                              .trim(),
+                        ) ??
+                        0.0;
+
+                    final newItem = ScannedItem.create(
+                      barcode: widget.barcode,
+                      name: nameController.text.trim(),
+                      price: price,
+                      quantity: quantity,
+                    );
+
+                    widget.onSave(newItem);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppConstants.radiusMedium),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _pantryMatch == null
-                          ? 'Novo na despensa'
-                          : '${_pantryMatch!.quantity} na despensa',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: _pantryMatch == null
-                            ? Colors.grey
-                            : _pantryMatch!.quantity > 0
-                                ? Colors.orange.shade700
-                                : Colors.red.shade700,
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const Text(
+                    'Salvar e Adicionar',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-            const SizedBox(height: AppConstants.paddingMedium),
-            TextField(
-              controller: priceController,
-              decoration: InputDecoration(
-                labelText: 'Preço',
-                prefixText: '€ ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: AppConstants.paddingMedium),
-            DropdownButtonFormField<int>(
-              value: quantity,
-              decoration: InputDecoration(
-                labelText: 'Quantidade',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
-              ),
-              items: List.generate(20, (index) => index + 1)
-                  .map((qty) => DropdownMenuItem<int>(
-                        value: qty,
-                        child: Text('$qty'),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  quantity = value ?? 1;
-                });
-              },
             ),
           ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: widget.onCancel,
-          child: const Text('Cancelar'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-          if (nameController.text.trim().isEmpty) {
-              SnackBarService.warning(context, 'Digite o nome do produto');
-              return;
-            }
-            
-            final price = double.tryParse(
-              priceController.text.replaceAll(',', '.').replaceAll('€', '').trim(),
-            ) ?? 0.0;
-            
-            final newItem = ScannedItem.create(
-              barcode: widget.barcode,
-              name: nameController.text.trim(),
-              price: price,
-              quantity: quantity,
-            );
-            
-            widget.onSave(newItem);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('Salvar e Adicionar'),
-        ),
-      ],
     );
   }
 }
