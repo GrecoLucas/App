@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/pantry_item.dart';
 import '../services/pantry_service.dart';
+import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
+import 'barcode_scanner_screen.dart';
 
 enum PantrySortOption { name, quantityAsc, quantityDesc }
 
@@ -185,6 +187,57 @@ class _PantryScreenState extends State<PantryScreen> {
     }
   }
 
+  // Adiciona produto via scanner de código de barras à despensa
+  void _addProductViaScanner() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => BarcodeScannerScreen(
+          onItemScanned: (scannedItem) async {
+            final name = scannedItem.name.length > 24 
+                ? scannedItem.name.substring(0, 24) 
+                : scannedItem.name;
+            
+            // Verifica se já existe na despensa
+            final currentItems = await PantryService.loadPantryItems();
+            final existingIndex = currentItems.indexWhere(
+              (i) => i.name.toLowerCase() == name.toLowerCase()
+            );
+            
+            if (existingIndex >= 0) {
+              // Atualiza quantidade
+              currentItems[existingIndex].quantity += scannedItem.quantity;
+              await PantryService.savePantryItems(currentItems);
+              
+              
+              if (mounted) {
+                SnackBarService.success(context, 'Quantidade de "$name" atualizada na despensa!');
+              }
+            } else {
+              // Adiciona novo item
+               final newItem = PantryItem(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                name: name,
+                quantity: scannedItem.quantity,
+                addedDate: DateTime.now(),
+              );
+               await PantryService.savePantryItems([...currentItems, newItem]);
+               
+               if (mounted) {
+                // ignore: use_build_context_synchronously
+                SnackBarService.success(context, '"$name" adicionado à despensa!');
+              }
+            }
+            
+            if (mounted) {
+              _loadItems();
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -243,34 +296,55 @@ class _PantryScreenState extends State<PantryScreen> {
             padding: const EdgeInsets.all(16),
             color: Colors.white,
             child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Buscar na despensa...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar na despensa...',
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.softGrey,
+                  ),
                 ),
-                filled: true,
-                fillColor: AppTheme.softGrey,
               ),
-            ),
+              Expanded(
+                child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredItems.isEmpty
+                      ? _buildEmptyState()
+                      : _buildItemList(),
+              ),
+            ],
           ),
-          Expanded(
-            child: _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _filteredItems.isEmpty
-                  ? _buildEmptyState()
-                  : _buildItemList(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _addNewItem,
-        backgroundColor: Colors.deepOrange,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _buildFloatingActionButtons(),
     );
   }
+
+  Widget _buildFloatingActionButtons() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        FloatingActionButton(
+          heroTag: 'scanner_fab',
+          onPressed: _addProductViaScanner,
+          backgroundColor: Colors.blue,
+          child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+        FloatingActionButton(
+          heroTag: 'add_fab',
+          onPressed: _addNewItem,
+          backgroundColor: AppTheme.primaryGreen,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+
+
+
 
   Widget _buildEmptyState() {
     return Center(

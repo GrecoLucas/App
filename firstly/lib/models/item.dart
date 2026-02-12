@@ -4,6 +4,7 @@ class Item {
   double price;
   int quantity; 
   bool isCompleted;
+  bool isAddedToPantry;
 
   Item({
     String? id,
@@ -11,6 +12,7 @@ class Item {
     this.price = 0.0,
     this.quantity = 1,
     this.isCompleted = false,
+    this.isAddedToPantry = false,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
 
   // Método para converter o item para Map (útil para persistência futura)
@@ -21,6 +23,7 @@ class Item {
       'quantity': quantity, 
       'price': price,
       'isCompleted': isCompleted,
+      'isAddedToPantry': isAddedToPantry,
     };
   }
 
@@ -35,6 +38,7 @@ class Item {
       price: map['price']?.toDouble() ?? 0.0,
       quantity: map['quantity']?.toInt() ?? 1,
       isCompleted: map['isCompleted'] ?? false,
+      isAddedToPantry: map['isAddedToPantry'] ?? false,
     );
   }
 

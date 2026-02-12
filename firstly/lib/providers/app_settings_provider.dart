@@ -98,4 +98,34 @@ class AppSettingsProvider extends ChangeNotifier {
       _convertedCurrency,
     );
   }
+
+  // Síncrono: Formata usando as taxas em cache
+  String formatPriceSync(double price) {
+    return AppSettingsService.formatPrice(price, _primaryCurrency);
+  }
+
+  // Síncrono: Formata com conversão usando taxas em cache
+  String formatPriceWithConversionSync(double price) {
+    final primaryText = AppSettingsService.formatPrice(price, _primaryCurrency);
+    
+    if (_primaryCurrency == _convertedCurrency || _convertedCurrency == Currency.none) {
+      return primaryText;
+    }
+
+    // Lógica de conversão síncrona
+    double convertedValue = price;
+    if (_exchangeRates.isNotEmpty) {
+      if (_primaryCurrency == Currency.eur) {
+         convertedValue = price * (_exchangeRates[_convertedCurrency.code] ?? 1.0);
+      } else if (_convertedCurrency == Currency.eur) {
+         convertedValue = price / (_exchangeRates[_primaryCurrency.code] ?? 1.0);
+      } else {
+         final amountInEur = price / (_exchangeRates[_primaryCurrency.code] ?? 1.0);
+         convertedValue = amountInEur * (_exchangeRates[_convertedCurrency.code] ?? 1.0);
+      }
+    }
+
+    final convertedText = AppSettingsService.formatPrice(convertedValue, _convertedCurrency);
+    return '$primaryText | $convertedText';
+  }
 }

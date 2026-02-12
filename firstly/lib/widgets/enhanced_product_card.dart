@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/item.dart';
 import '../models/favorite_item.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../services/favorite_items_service.dart';
 import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
@@ -160,27 +162,30 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
-                                  Icons.euro,
-                                  size: AppConstants.iconSmall,
-                                  color: AppTheme.primaryGreen,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${(widget.item.price * widget.item.quantity).toStringAsFixed(2)}',
-                                  style: AppStyles.priceStyle.copyWith(
-                                    fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                Consumer<AppSettingsProvider>(
+                                  builder: (context, settingsProvider, child) {
+                                    return Text(
+                                      settingsProvider.formatPriceWithConversionSync(widget.item.price * widget.item.quantity),
+                                      style: AppStyles.priceStyle.copyWith(
+                                        fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.primaryGreen,
+                                      ),
+                                    );
+                                  }
                                 ),
                               ],
                             ),
                             if (widget.item.quantity > 1)
-                              Text(
-                                '(€${widget.item.price.toStringAsFixed(2)} cada)',
-                                style: AppStyles.captionGrey.copyWith(
-                                  fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
-                                ),
+                              Consumer<AppSettingsProvider>(
+                                builder: (context, settingsProvider, child) {
+                                  return Text(
+                                    '(${settingsProvider.formatPriceSync(widget.item.price)} cada)',
+                                    style: AppStyles.captionGrey.copyWith(
+                                      fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
+                                    ),
+                                  );
+                                }
                               ),
                           ],
                         ),

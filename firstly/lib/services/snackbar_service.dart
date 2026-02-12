@@ -33,7 +33,7 @@ class SnackBarService {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        margin: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(left: 16, right: 96, bottom: 16),
       ),
     );
   }

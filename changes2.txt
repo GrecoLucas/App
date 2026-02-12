@@ -1,0 +1,203 @@
+diff --git a/firstly/lib/providers/app_settings_provider.dart b/firstly/lib/providers/app_settings_provider.dart
+index e4fe8c0..166aab5 100644
+--- a/firstly/lib/providers/app_settings_provider.dart
++++ b/firstly/lib/providers/app_settings_provider.dart
+@@ -98,4 +98,34 @@ class AppSettingsProvider extends ChangeNotifier {
+       _convertedCurrency,
+     );
+   }
++
++  // Síncrono: Formata usando as taxas em cache
++  String formatPriceSync(double price) {
++    return AppSettingsService.formatPrice(price, _primaryCurrency);
++  }
++
++  // Síncrono: Formata com conversão usando taxas em cache
++  String formatPriceWithConversionSync(double price) {
++    final primaryText = AppSettingsService.formatPrice(price, _primaryCurrency);
++    
++    if (_primaryCurrency == _convertedCurrency || _convertedCurrency == Currency.none) {
++      return primaryText;
++    }
++
++    // Lógica de conversão síncrona
++    double convertedValue = price;
++    if (_exchangeRates.isNotEmpty) {
++      if (_primaryCurrency == Currency.eur) {
++         convertedValue = price * (_exchangeRates[_convertedCurrency.code] ?? 1.0);
++      } else if (_convertedCurrency == Currency.eur) {
++         convertedValue = price / (_exchangeRates[_primaryCurrency.code] ?? 1.0);
++      } else {
++         final amountInEur = price / (_exchangeRates[_primaryCurrency.code] ?? 1.0);
++         convertedValue = amountInEur * (_exchangeRates[_convertedCurrency.code] ?? 1.0);
++      }
++    }
++
++    final convertedText = AppSettingsService.formatPrice(convertedValue, _convertedCurrency);
++    return '$primaryText | $convertedText';
++  }
+ }
+diff --git a/firstly/lib/screens/shopping_list_detail_screen.dart b/firstly/lib/screens/shopping_list_detail_screen.dart
+index 3d0d6f2..0bd7719 100644
+--- a/firstly/lib/screens/shopping_list_detail_screen.dart
++++ b/firstly/lib/screens/shopping_list_detail_screen.dart
+@@ -138,9 +138,9 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+     });
+     
+     if (item.isCompleted) {
+-      SnackBarService.success(context, 'Movido para Comprados');
++      SnackBarService.success(context, 'Removido do carrinho');
+     } else {
+-      SnackBarService.success(context, 'Movido para Comprando');
++      SnackBarService.success(context, 'Adicionado ao carrinho');
+     }
+     
+     widget.onUpdate();
+@@ -261,33 +261,31 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+ 
+   // Adiciona produto via scanner de código de barras
+   void _addProductViaScanner() async {
+-    final scannedItem = await Navigator.push<ScannedItem>(
++    await Navigator.push(
+       context,
+       MaterialPageRoute(
+-        builder: (context) => const BarcodeScannerScreen(),
++        builder: (context) => BarcodeScannerScreen(
++          onItemScanned: (scannedItem) {
++            final name = scannedItem.name.length > 24 
++                ? scannedItem.name.substring(0, 24) 
++                : scannedItem.name;
++            
++            final newItem = Item(
++              name: name,
++              price: scannedItem.price,
++              quantity: scannedItem.quantity,
++            );
++            
++            // Lista local apenas - adicionar diretamente
++            setState(() {
++              widget.shoppingList.addItem(newItem);
++            });
++            
++            widget.onUpdate();
++          },
++        ),
+       ),
+     );
+-
+-    if (scannedItem != null) {
+-      final name = scannedItem.name.length > 24 
+-          ? scannedItem.name.substring(0, 24) 
+-          : scannedItem.name;
+-          
+-      final newItem = Item(
+-        name: name,
+-        price: scannedItem.price,
+-        quantity: scannedItem.quantity,
+-      );
+-      
+-      // Lista local apenas - adicionar diretamente
+-      setState(() {
+-        widget.shoppingList.addItem(newItem);
+-      });
+-      
+-      widget.onUpdate();
+-
+-      SnackBarService.success(context, '${scannedItem.name} adicionado via scanner');
+-    }
+   }
+ 
+   Widget _buildBudgetProgress() {
+@@ -434,11 +432,11 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+       child: Row(
+         children: [
+           Expanded(
+-            child: _buildTabButton(0, 'Comprando', Icons.shopping_cart_outlined),
++            child: _buildTabButton(0, 'Na prateleira', Icons.storefront),
+           ),
+           Container(width: 1, height: 24, color: Colors.grey[300]),
+           Expanded(
+-            child: _buildTabButton(1, 'Comprado', Icons.check_circle_outline),
++            child: _buildTabButton(1, 'No carrinho', Icons.shopping_cart),
+           ),
+         ],
+       ),
+@@ -520,7 +518,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+                               return FutureBuilder<String>(
+                                 future: settingsProvider.formatPriceWithConversion(widget.shoppingList.totalPrice),
+                                 builder: (context, snapshot) {
+-                                  final price = snapshot.data ?? '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}';
++                                  final price = snapshot.data ?? settingsProvider.formatPriceSync(widget.shoppingList.totalPrice);
+                                   return Text(
+                                     price,
+                                     style: AppStyles.headingMedium.copyWith(
+@@ -547,7 +545,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
+                             return FutureBuilder<String>(
+                               future: settingsProvider.formatPriceWithConversion(remainingBudget.abs()),
+                               builder: (context, snapshot) {
+-                                final val = snapshot.data ?? '€${remainingBudget.abs().toStringAsFixed(2)}';
++                                final val = snapshot.data ?? settingsProvider.formatPriceSync(remainingBudget.abs());
+                                 final displayText = isBudgetExceeded ? '$val acima' : '$val restante';
+                                 
+                                 return Text(
+diff --git a/firstly/lib/widgets/enhanced_product_card.dart b/firstly/lib/widgets/enhanced_product_card.dart
+index 147b1a3..5281402 100644
+--- a/firstly/lib/widgets/enhanced_product_card.dart
++++ b/firstly/lib/widgets/enhanced_product_card.dart
+@@ -1,6 +1,8 @@
+ import 'package:flutter/material.dart';
+ import '../models/item.dart';
+ import '../models/favorite_item.dart';
++import 'package:provider/provider.dart';
++import '../providers/app_settings_provider.dart';
+ import '../services/favorite_items_service.dart';
+ import '../services/snackbar_service.dart';
+ import '../utils/app_theme.dart';
+@@ -160,27 +162,30 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
+                             Row(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+-                                Icon(
+-                                  Icons.euro,
+-                                  size: AppConstants.iconSmall,
+-                                  color: AppTheme.primaryGreen,
+-                                ),
+-                                const SizedBox(width: 4),
+-                                Text(
+-                                  '${(widget.item.price * widget.item.quantity).toStringAsFixed(2)}',
+-                                  style: AppStyles.priceStyle.copyWith(
+-                                    fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
+-                                    fontWeight: FontWeight.w700,
+-                                  ),
++                                Consumer<AppSettingsProvider>(
++                                  builder: (context, settingsProvider, child) {
++                                    return Text(
++                                      settingsProvider.formatPriceWithConversionSync(widget.item.price * widget.item.quantity),
++                                      style: AppStyles.priceStyle.copyWith(
++                                        fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
++                                        fontWeight: FontWeight.w700,
++                                        color: AppTheme.primaryGreen,
++                                      ),
++                                    );
++                                  }
+                                 ),
+                               ],
+                             ),
+                             if (widget.item.quantity > 1)
+-                              Text(
+-                                '(€${widget.item.price.toStringAsFixed(2)} cada)',
+-                                style: AppStyles.captionGrey.copyWith(
+-                                  fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
+-                                ),
++                              Consumer<AppSettingsProvider>(
++                                builder: (context, settingsProvider, child) {
++                                  return Text(
++                                    '(${settingsProvider.formatPriceSync(widget.item.price)} cada)',
++                                    style: AppStyles.captionGrey.copyWith(
++                                      fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.captionGrey.fontSize!),
++                                    ),
++                                  );
++                                }
+                               ),
+                           ],
+                         ),

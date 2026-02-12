@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'dart:async';
 import '../models/list.dart';
 import '../models/item.dart';
-import '../models/scanned_item.dart';
+
 import '../utils/app_theme.dart';
 import '../widgets/enhanced_add_product_dialog.dart';
 import '../widgets/enhanced_product_card.dart';
@@ -138,31 +138,43 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     });
     
     if (item.isCompleted) {
-      SnackBarService.success(context, 'Movido para Comprados');
+      SnackBarService.success(context, 'Adicionado do carrinho');
     } else {
-      SnackBarService.success(context, 'Movido para Comprando');
+      SnackBarService.success(context, 'Removido do carrinho');
     }
     
     widget.onUpdate();
   }
 
-  // Envia itens marcados para a despensa
+  // Envia itens marcados para a despensa (agora apenas os do carrinho que ainda não foram)
   void _addCheckedToPantry() async {
-    final checkedItems = widget.shoppingList.items.where((i) => i.isCompleted).toList();
+    final checkedItems = widget.shoppingList.items.where((i) => i.isCompleted && !i.isAddedToPantry).toList();
     
     if (checkedItems.isEmpty) {
       if (mounted) {
-        SnackBarService.warning(context, 'Marque itens para enviar à despensa');
+        SnackBarService.warning(context, 'Todos os itens do carrinho já foram adicionados à despensa');
       }
       return;
     }
 
     final count = await PantryService.addItemsFromList(checkedItems);
     
+    // Marcar como enviados localmente
+    setState(() {
+      for (var item in checkedItems) {
+        item.isAddedToPantry = true;
+      }
+    });
+    
     if (mounted) {
-      SnackBarService.warning(context, '$count itens enviados para a despensa!');
+      SnackBarService.success(context, '$count itens enviados para a despensa!');
     }
   }
+
+
+
+
+
 
   // Remove um produto da lista
   void _removeProduct(Item item) async {
@@ -261,33 +273,31 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
   // Adiciona produto via scanner de código de barras
   void _addProductViaScanner() async {
-    final scannedItem = await Navigator.push<ScannedItem>(
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const BarcodeScannerScreen(),
+        builder: (context) => BarcodeScannerScreen(
+          onItemScanned: (scannedItem) {
+            final name = scannedItem.name.length > 24 
+                ? scannedItem.name.substring(0, 24) 
+                : scannedItem.name;
+            
+            final newItem = Item(
+              name: name,
+              price: scannedItem.price,
+              quantity: scannedItem.quantity,
+            );
+            
+            // Lista local apenas - adicionar diretamente
+            setState(() {
+              widget.shoppingList.addItem(newItem);
+            });
+            
+            widget.onUpdate();
+          },
+        ),
       ),
     );
-
-    if (scannedItem != null) {
-      final name = scannedItem.name.length > 24 
-          ? scannedItem.name.substring(0, 24) 
-          : scannedItem.name;
-          
-      final newItem = Item(
-        name: name,
-        price: scannedItem.price,
-        quantity: scannedItem.quantity,
-      );
-      
-      // Lista local apenas - adicionar diretamente
-      setState(() {
-        widget.shoppingList.addItem(newItem);
-      });
-      
-      widget.onUpdate();
-
-      SnackBarService.success(context, '${scannedItem.name} adicionado via scanner');
-    }
   }
 
   Widget _buildBudgetProgress() {
@@ -420,6 +430,35 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           ),
         ],
       ),
+      floatingActionButton: _buildFloatingActionButtons(),
+    );
+  }
+
+  Widget _buildFloatingActionButtons() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        FloatingActionButton(
+          heroTag: 'scanner_fab',
+          onPressed: _addProductViaScanner,
+          backgroundColor: Colors.blue,
+          child: const Icon(Icons.qr_code_scanner, color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+        FloatingActionButton(
+          heroTag: 'add_fab',
+          onPressed: _addProduct,
+          backgroundColor: AppTheme.primaryGreen,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+        FloatingActionButton(
+          heroTag: 'favorites_fab',
+          onPressed: _addFavoriteProducts,
+          backgroundColor: AppTheme.warningRed,
+          child: const Icon(Icons.favorite, color: Colors.white),
+        ),
+      ],
     );
   }
 
@@ -434,11 +473,11 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       child: Row(
         children: [
           Expanded(
-            child: _buildTabButton(0, 'Comprando', Icons.shopping_cart_outlined),
+            child: _buildTabButton(0, 'Na prateleira', Icons.storefront),
           ),
           Container(width: 1, height: 24, color: Colors.grey[300]),
           Expanded(
-            child: _buildTabButton(1, 'Comprado', Icons.check_circle_outline),
+            child: _buildTabButton(1, 'No carrinho', Icons.shopping_cart),
           ),
         ],
       ),
@@ -520,7 +559,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                               return FutureBuilder<String>(
                                 future: settingsProvider.formatPriceWithConversion(widget.shoppingList.totalPrice),
                                 builder: (context, snapshot) {
-                                  final price = snapshot.data ?? '€${widget.shoppingList.totalPrice.toStringAsFixed(2)}';
+                                  final price = snapshot.data ?? settingsProvider.formatPriceSync(widget.shoppingList.totalPrice);
                                   return Text(
                                     price,
                                     style: AppStyles.headingMedium.copyWith(
@@ -547,7 +586,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                             return FutureBuilder<String>(
                               future: settingsProvider.formatPriceWithConversion(remainingBudget.abs()),
                               builder: (context, snapshot) {
-                                final val = snapshot.data ?? '€${remainingBudget.abs().toStringAsFixed(2)}';
+                                final val = snapshot.data ?? settingsProvider.formatPriceSync(remainingBudget.abs());
                                 final displayText = isBudgetExceeded ? '$val acima' : '$val restante';
                                 
                                 return Text(
@@ -597,79 +636,13 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               const SizedBox(height: 12),
               _buildBudgetProgress(),
             ],
-
-            const SizedBox(height: 16),
-            const Divider(height: 1, color: Color(0xFFEEEEEE)),
-            const SizedBox(height: 16),
-
-            // Linha de Ações (4 botões compactos)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildCompactActionButton(
-                  icon: Icons.add_circle,
-                  color: AppTheme.primaryGreen,
-                  label: 'Adicionar',
-                  onTap: _addProduct,
-                ),
-                _buildCompactActionButton(
-                  icon: Icons.qr_code_scanner,
-                  color: const Color(0xFF2196F3),
-                  label: 'Scanner',
-                  onTap: _addProductViaScanner,
-                ),
-                _buildCompactActionButton(
-                  icon: Icons.kitchen,
-                  color: Colors.orange,
-                  label: 'Despensa',
-                  onTap: _addCheckedToPantry,
-                ),
-                _buildCompactActionButton(
-                  icon: Icons.favorite,
-                  color: AppTheme.warningRed,
-                  label: 'Favoritos',
-                  onTap: _addFavoriteProducts,
-                ),
-              ],
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCompactActionButton({
-    required IconData icon,
-    required Color color,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildEmptyState() {
     return RefreshIndicator(
@@ -756,7 +729,7 @@ Widget _buildProductsList() {
             ),
             const SizedBox(height: 16),
             Text(
-              _currentTab == 0 ? 'Tudo comprado!' : 'Nenhum item comprado ainda',
+              _currentTab == 0 ? 'Tudo no carrinho!' : 'Nenhum item no carrinho',
               style: AppStyles.bodyLarge.copyWith(color: Colors.grey[500]),
             ),
           ],
@@ -767,32 +740,66 @@ Widget _buildProductsList() {
     return RefreshIndicator(
       onRefresh: _handleRefresh,
       color: AppTheme.primaryGreen,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge),
-        child: ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          itemCount: filteredItems.length,
-          padding: const EdgeInsets.only(bottom: 100),
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
+      child: Column(
+        children: [
+          // Botão "Adicionar à Despensa" (Apenas na aba Carrinho e se houver itens válidos)
+          if (_currentTab == 1) ...[
+             Builder(
+               builder: (context) {
+                 final itemsToSend = filteredItems.where((i) => !i.isAddedToPantry).toList();
+                 if (itemsToSend.isEmpty) return const SizedBox.shrink();
+
+                 return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _addCheckedToPantry,
+                      icon: const Icon(Icons.kitchen, color: Colors.white),
+                      label: Text(
+                        'Adicionar itens na dispensa (${itemsToSend.length})',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+               }
+             ),
+          ],
             
-            // Se o seu EnhancedProductCard aceitar uma escala de texto:
-            return MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(_itemScale),
-              ),
-              child: EnhancedProductCard(
-                item: item,
-                onEdit: () => _editProduct(item),
-                onDelete: () => _removeProduct(item),
-                onToggle: () => _toggleItemCompletion(item),
-              ),
-            );
-          },
-        ),
+          Expanded(
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: filteredItems.length,
+              padding: const EdgeInsets.symmetric(horizontal: AppConstants.paddingLarge).copyWith(bottom: 100, top: 8),
+              itemBuilder: (context, index) {
+                final item = filteredItems[index];
+                
+                // Se o seu EnhancedProductCard aceitar uma escala de texto:
+                return MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(_itemScale),
+                  ),
+                  child: EnhancedProductCard(
+                    item: item,
+                    onEdit: () => _editProduct(item),
+                    onDelete: () => _removeProduct(item),
+                    onToggle: () => _toggleItemCompletion(item),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-
-

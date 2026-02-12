@@ -7,6 +7,8 @@ import '../services/pantry_service.dart';
 import '../services/product_api_service.dart';
 import '../services/snackbar_service.dart';
 import '../utils/app_theme.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_settings_provider.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final Function(ScannedItem)? onItemScanned;
@@ -53,7 +55,31 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       final existingItem = await BarcodeService.findItemByBarcode(scannedBarcode);
       
       if (existingItem != null) {
-        // Produto encontrado no banco local - mostrar dialog de confirmação/edição
+        // Se temos um callback de escaneamento, usamos o modo de escaneamento contínuo
+        if (widget.onItemScanned != null) {
+          widget.onItemScanned!(existingItem);
+          
+          // Feedback visual
+          if (mounted) {
+            final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(existingItem.price);
+            if (mounted) {
+              SnackBarService.success(context, '${existingItem.name} adicionado, preço: $formattedPrice');
+            }
+          }
+
+          // Delay para evitar leitura duplicada imediata e permitir ver o feedback
+          await Future.delayed(const Duration(seconds: 2));
+          
+          if (mounted) {
+            setState(() {
+              isScanning = true;
+              isProcessing = false;
+            });
+          }
+          return;
+        }
+
+        // Produto encontrado no banco local - mostrar dialog de confirmação/edição (comportamento antigo)
         _showExistingItemDialog(existingItem);
         return;
       }
@@ -123,10 +149,29 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           print('Salvando novo item: ${newItem.name}');
           // Salva o novo item no banco local
           await BarcodeService.saveScannedItemToDatabase(newItem);
+          
           // Fecha o dialog
           Navigator.of(context).pop();
-          // Retorna o item e fecha o scanner
-          Navigator.of(context).pop(newItem);
+
+          if (widget.onItemScanned != null) {
+            // Modo contínuo
+            widget.onItemScanned!(newItem);
+            
+            if (mounted) {
+              final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(newItem.price);
+              if (mounted) {
+                SnackBarService.success(context, '${newItem.name} adicionado, preço: $formattedPrice');
+              }
+              
+              setState(() {
+                isScanning = true;
+                isProcessing = false;
+              });
+            }
+          } else {
+            // Modo único (fecha o scanner)
+            Navigator.of(context).pop(newItem);
+          }
         },
         onCancel: () {
           Navigator.of(context).pop();
