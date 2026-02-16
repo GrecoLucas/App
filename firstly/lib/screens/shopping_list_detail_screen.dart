@@ -645,68 +645,72 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
 
   Widget _buildEmptyState() {
-    return RefreshIndicator(
-      onRefresh: _handleRefresh,
-      color: AppTheme.primaryGreen,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: [
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.5,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(AppConstants.paddingXLarge),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
-                        boxShadow: const [AppStyles.softShadow],
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(AppConstants.paddingLarge),
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightGreen,
-                              borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: AppTheme.primaryGreen,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight,
+              ),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppConstants.paddingXLarge),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(AppConstants.paddingXLarge),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppConstants.radiusXLarge),
+                          boxShadow: const [AppStyles.softShadow],
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(AppConstants.paddingLarge),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGreen,
+                                borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
+                              ),
+                              child: Icon(
+                                Icons.shopping_basket_outlined,
+                                size: AppConstants.iconXLarge,
+                                color: AppTheme.primaryGreen,
+                              ),
                             ),
-                            child: Icon(
-                              Icons.shopping_basket_outlined,
-                              size: AppConstants.iconXLarge,
-                              color: AppTheme.primaryGreen,
+                            const SizedBox(height: AppConstants.paddingLarge),
+                            const Text(
+                              'Lista vazia',
+                              style: AppStyles.headingMedium,
                             ),
-                          ),
-                          const SizedBox(height: AppConstants.paddingLarge),
-                          const Text(
-                            'Lista vazia',
-                            style: AppStyles.headingMedium,
-                          ),
-                          const SizedBox(height: AppConstants.paddingSmall),
-                          const Text(
-                            'Adicione produtos à sua lista de compras',
-                            style: AppStyles.bodyMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: AppConstants.paddingMedium),
-                          const Text(
-                            'Toque em "Adicionar" para começar!\n\nPuxe para baixo para atualizar.',
-                            style: AppStyles.captionGrey,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                            const SizedBox(height: AppConstants.paddingSmall),
+                            const Text(
+                              'Adicione produtos à sua lista de compras',
+                              style: AppStyles.bodyMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: AppConstants.paddingMedium),
+                            const Text(
+                              'Toque em "Adicionar" para começar!\n\nPuxe para baixo para atualizar.',
+                              style: AppStyles.captionGrey,
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

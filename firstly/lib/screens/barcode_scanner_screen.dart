@@ -22,38 +22,88 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
-  MobileScannerController cameraController = MobileScannerController();
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with WidgetsBindingObserver {
+  late MobileScannerController cameraController;
   bool isScanning = true;
   bool isProcessing = false;
+  String? lastScannedBarcode;
+  DateTime? lastScanTime;
+  static const scanCooldown = Duration(milliseconds: 1000); // Cooldown apenas para o MESMO código
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    cameraController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+    );
+  }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     cameraController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (isScanning && !isProcessing) {
+          cameraController.start();
+        }
+        break;
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+        cameraController.stop();
+        break;
+        case AppLifecycleState.hidden:
+        // TODO: Handle this case.
+    }
+  }
+
   void _onDetect(BarcodeCapture capture) async {
+    // 1. Verificações síncronas rápidas
     if (!isScanning || isProcessing) return;
     
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
     
     final barcode = barcodes.first;
-    if (barcode.rawValue == null) return;
+    final scannedBarcode = barcode.rawValue; // Restore variable name used below
+    if (scannedBarcode == null) return;
+
+    // Check cooldown for SAME barcode
+    if (lastScannedBarcode == scannedBarcode && 
+        lastScanTime != null && 
+        DateTime.now().difference(lastScanTime!) < scanCooldown) {
+      return;
+    }
     
-    setState(() {
-      isScanning = false;
-      isProcessing = true;
-    });
+    // 2. Bloqueio síncrono para evitar condições de corrida
+    isProcessing = true;
+    lastScanTime = DateTime.now();
+    lastScannedBarcode = scannedBarcode;
+
+    // 3. Feedback visual
+    if (mounted) {
+      setState(() => isScanning = false); 
+    }
     
-    final scannedBarcode = barcode.rawValue!;
     print('Código escaneado: $scannedBarcode');
     
     try {
       // Primeiro verificar se já existe no banco local
       final existingItem = await BarcodeService.findItemByBarcode(scannedBarcode);
       
+      if (!mounted) return;
+
       if (existingItem != null) {
         // Se temos um callback de escaneamento, usamos o modo de escaneamento contínuo
         if (widget.onItemScanned != null) {
@@ -67,9 +117,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             }
           }
 
-          // Delay para evitar leitura duplicada imediata e permitir ver o feedback
-          await Future.delayed(const Duration(seconds: 2));
-          
+          // Reativar imediatamente para o próximo item
           if (mounted) {
             setState(() {
               isScanning = true;
@@ -80,7 +128,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         }
 
         // Produto encontrado no banco local - mostrar dialog de confirmação/edição (comportamento antigo)
-        _showExistingItemDialog(existingItem);
+        await _showExistingItemDialog(existingItem);
         return;
       }
       
@@ -88,6 +136,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       print('Buscando produto nas APIs...');
       final productInfo = await ProductApiService.getProductInfo(scannedBarcode);
       
+      if (!mounted) return;
+
       String? suggestedName = productInfo?.name;
       if (suggestedName != null) {
         final lowerName = suggestedName.toLowerCase();
@@ -98,22 +148,26 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         }
       }
 
-      if (suggestedName != null) {
-        // Produto encontrado na API - mostrar dialog com dados preenchidos
-        _showNewItemDialog(scannedBarcode, suggestedName: suggestedName);
-      } else {
-        // Produto não encontrado em nenhuma API - mostrar dialog vazio
-        _showNewItemDialog(scannedBarcode);
-      }
+      // Produto encontrado na API ou não - mostrar dialog
+      await _showNewItemDialog(scannedBarcode, suggestedName: suggestedName);
+      
     } catch (e) {
       print('Erro ao processar código de barras: $e');
-      // Em caso de erro, mostrar dialog vazio
-      _showNewItemDialog(scannedBarcode);
+      if (mounted) {
+        await _showNewItemDialog(scannedBarcode);
+      }
+    } finally {
+      // Garantir que o estado seja resetado se não foi tratado nos fluxos acima
+      // (Os dialogs já tratam o reset, mas em caso de erro não tratado)
+      if (mounted && isProcessing && isScanning == false) {
+         // Se ainda estiver "processando" mas o fluxo terminou sem abrir dialog
+         // (Isso não deve acontecer com a lógica atual, mas é um fail-safe)
+      }
     }
   }
 
-  void _showExistingItemDialog(ScannedItem item) {
-    showDialog(
+  Future<void> _showExistingItemDialog(ScannedItem item) async {
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => _ItemFoundDialog(
@@ -123,23 +177,25 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           // Salva o item atualizado no banco local
           await BarcodeService.saveScannedItemToDatabase(updatedItem);
           // Fecha o dialog
-          Navigator.of(context).pop();
+          if (mounted) Navigator.of(context).pop();
           // Retorna o item e fecha o scanner
-          Navigator.of(context).pop(updatedItem);
+          if (mounted) Navigator.of(context).pop(updatedItem);
         },
         onCancel: () {
           Navigator.of(context).pop();
-          setState(() {
-            isScanning = true;
-            isProcessing = false;
-          });
+          if (mounted) {
+            setState(() {
+              isScanning = true;
+              isProcessing = false;
+            });
+          }
         },
       ),
     );
   }
 
-  void _showNewItemDialog(String barcode, {String? suggestedName}) {
-    showDialog(
+  Future<void> _showNewItemDialog(String barcode, {String? suggestedName}) async {
+    await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => _NewItemDialog(
@@ -151,7 +207,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           await BarcodeService.saveScannedItemToDatabase(newItem);
           
           // Fecha o dialog
-          Navigator.of(context).pop();
+          if (mounted) Navigator.of(context).pop();
 
           if (widget.onItemScanned != null) {
             // Modo contínuo
@@ -170,15 +226,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             }
           } else {
             // Modo único (fecha o scanner)
-            Navigator.of(context).pop(newItem);
+            if (mounted) Navigator.of(context).pop(newItem);
           }
         },
         onCancel: () {
           Navigator.of(context).pop();
-          setState(() {
-            isScanning = true;
-            isProcessing = false;
-          });
+          if (mounted) {
+            setState(() {
+              isScanning = true;
+              isProcessing = false;
+            });
+          }
         },
       ),
     );
