@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'utils/app_theme.dart';
-import 'providers/app_settings_provider.dart';
-import 'screens/home_screen.dart';
+import './core/theme/app_theme.dart';
+import './core/providers/app_settings_provider.dart';
+import './features/home/screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
