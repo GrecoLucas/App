@@ -8,6 +8,7 @@ import '../../pantry/services/pantry_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/widgets/cyclic_quantity_selector.dart';
 
 class AddProductDialog extends StatefulWidget {
   final String? initialName;
@@ -401,45 +402,32 @@ class _AddProductDialogState extends State<AddProductDialog> {
                     ),
                   ] else ...[
                     // Campo quantidade normal
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.softGrey,
-                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                        border: Border.all(color: Colors.grey.withOpacity(0.3)),
-                      ),
-                      child: DropdownButtonFormField<int>(
-                        value: selectedQuantity,
-                        decoration: InputDecoration(
-                          labelText: 'Quantidade',
-                          labelStyle: TextStyle(
-                            fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            vertical: AppConstants.getResponsivePadding(context, AppConstants.paddingMedium),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.numbers,
-                            size: isSmallScreen ? AppConstants.iconMedium : AppConstants.iconLarge,
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'Quantidade',
+                            style: TextStyle(
+                              fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[700],
+                            ),
                           ),
                         ),
-                        dropdownColor: Colors.white,
-                        style: TextStyle(
-                          fontSize: AppConstants.getResponsiveFontSize(context, AppConstants.fontMedium * 1.2),
-                          color: Colors.black87,
+                        Expanded(
+                          flex: 3,
+                          child: CyclicQuantitySelector(
+                            value: selectedQuantity,
+                            isSmallScreen: isSmallScreen,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedQuantity = value;
+                              });
+                            },
+                          ),
                         ),
-                        items: List.generate(20, (index) => index + 1)
-                            .map((quantity) => DropdownMenuItem<int>(
-                                  value: quantity,
-                                  child: Text('$quantity'),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedQuantity = value ?? 1;
-                          });
-                        },
-                      ),
+                      ],
                     ),
                   ],
                 ],

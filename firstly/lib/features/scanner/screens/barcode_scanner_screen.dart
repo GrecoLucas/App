@@ -9,6 +9,7 @@ import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_settings_provider.dart';
+import '../../../core/widgets/cyclic_quantity_selector.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final Function(ScannedItem)? onItemScanned;
@@ -486,9 +487,10 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                     const SizedBox(height: AppConstants.paddingSmall),
 
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start, // Alinha ao topo p/ absorver diferenças de padding
                       children: [
                         Expanded(
-                          flex: 3,
+                          flex: 1, // Reduzido de 3 para 1 para simetria horizontal
                           child: TextField(
                             controller: priceController,
                             decoration: InputDecoration(
@@ -508,11 +510,10 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                         ),
                         const SizedBox(width: AppConstants.paddingMedium),
                         Expanded(
-                          flex: 2,
-                          child: DropdownButtonFormField<int>(
-                            value: quantity,
+                          flex: 1, // Ajustado para corresponder ao rácio do Preço (1:1)
+                          child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: 'Qtd.',
+                              labelText: 'Quantidade',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(
                                     AppConstants.radiusMedium),
@@ -520,19 +521,19 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                               filled: true,
                               fillColor: AppTheme.softGrey,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 16),
+                                  horizontal: 4, vertical: 0),
                             ),
-                            items: List.generate(20, (index) => index + 1)
-                                .map((qty) => DropdownMenuItem<int>(
-                                      value: qty,
-                                      child: Text('$qty'),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                quantity = value ?? 1;
-                              });
-                            },
+                            child: CyclicQuantitySelector(
+                              value: quantity,
+                              // Height removido para herdar altura nativa do InputDecorator e TextField pai.
+                              backgroundColor: Colors.transparent, // Prevê borda dupla 
+                              border: Border.all(color: Colors.transparent), 
+                              onChanged: (value) {
+                                setState(() {
+                                  quantity = value;
+                                });
+                              },
+                            ),
                           ),
                         ),
                       ],
@@ -778,9 +779,10 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                     const SizedBox(height: AppConstants.paddingSmall),
 
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.start, // Alinha ao topo p/ absorver diferenças de padding
                       children: [
                         Expanded(
-                          flex: 3,
+                          flex: 1, // Reduzido de 3 para 1 para simetria horizontal
                           child: TextField(
                             controller: priceController,
                             decoration: InputDecoration(
@@ -800,11 +802,10 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                         ),
                         const SizedBox(width: AppConstants.paddingMedium),
                         Expanded(
-                          flex: 2,
-                          child: DropdownButtonFormField<int>(
-                            value: quantity,
+                          flex: 1, // Ajustado para corresponder ao rácio do Preço (1:1)
+                          child: InputDecorator(
                             decoration: InputDecoration(
-                              labelText: 'Qtd.',
+                              labelText: 'Quantidade',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(
                                     AppConstants.radiusMedium),
@@ -812,19 +813,19 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                               filled: true,
                               fillColor: AppTheme.softGrey,
                               contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 16),
+                                  horizontal: 4, vertical: 0),
                             ),
-                            items: List.generate(20, (index) => index + 1)
-                                .map((qty) => DropdownMenuItem<int>(
-                                      value: qty,
-                                      child: Text('$qty'),
-                                    ))
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                quantity = value ?? 1;
-                              });
-                            },
+                            child: CyclicQuantitySelector(
+                              value: quantity,
+                              // Height removido para herdar altura nativa do InputDecorator e TextField pai.
+                              backgroundColor: Colors.transparent, // Prevê borda dupla 
+                              border: Border.all(color: Colors.transparent), 
+                              onChanged: (value) {
+                                setState(() {
+                                  quantity = value;
+                                });
+                              },
+                            ),
                           ),
                         ),
                       ],

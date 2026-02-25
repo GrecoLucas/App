@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../../../core/theme/app_theme.dart';
-
-
+import '../../../core/widgets/cyclic_quantity_selector.dart';
 class QuickAddFavoritesDialog extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onItemsSelected;
 
@@ -379,7 +378,7 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
       child: Row(
         children: [
           Expanded(
-            flex: 2,
+            flex: 1, // Redução de flex para 1 para dividir o espaço uniformemente e evitar overflow
             child: TextFormField(
               initialValue: selection.price > 0 ? selection.price.toStringAsFixed(2) : '',
               decoration: InputDecoration(
@@ -400,30 +399,12 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Container(
-              height: 48, // Altura fixa para alinhar com o campo de texto
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey[400]!),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: selection.quantity,
-                  isExpanded: true,
-                  items: List.generate(20, (index) => index + 1)
-                      .map((quantity) => DropdownMenuItem<int>(
-                            value: quantity,
-                            child: Text('$quantity'),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      _updateSelectedItem(item.id, selection.price, value);
-                    }
-                  },
-                ),
-              ),
+            child: CyclicQuantitySelector(
+              value: selection.quantity,
+              height: 48, // Alinha com a altura do campo de texto
+              onChanged: (value) {
+                _updateSelectedItem(item.id, selection.price, value);
+              },
             ),
           ),
         ],
