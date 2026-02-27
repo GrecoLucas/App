@@ -4,6 +4,8 @@ import '../services/pantry_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../scanner/screens/barcode_scanner_screen.dart';
+import '../../favorites/widgets/quick_add_favorites_dialog.dart';
+import '../widgets/enhanced_add_pantry_item_dialog.dart';
 
 enum PantrySortOption { name, quantityAsc, quantityDesc }
 
@@ -79,75 +81,16 @@ class _PantryScreenState extends State<PantryScreen> {
   }
 
   void _addNewItem() async {
-    final nameController = TextEditingController();
-    final quantityController = TextEditingController(text: '1');
-    
-    await showDialog(
+    final result = await showModalBottomSheet<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Adicionar à Despensa'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nome do Item',
-                hintText: 'Ex: Arroz',
-              ),
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: quantityController,
-              decoration: const InputDecoration(
-                labelText: 'Quantidade',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isNotEmpty) {
-                final qty = int.tryParse(quantityController.text) ?? 1;
-                final newItem = PantryItem(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: nameController.text.trim(),
-                  quantity: qty,
-                  addedDate: DateTime.now(),
-                );
-                
-                
-                final currentItems = await PantryService.loadPantryItems();
-                final existingIndex = currentItems.indexWhere(
-                  (i) => i.name.toLowerCase() == newItem.name.toLowerCase()
-                );
-                
-                if (existingIndex >= 0) {
-                  currentItems[existingIndex].quantity += newItem.quantity;
-                  await PantryService.savePantryItems(currentItems);
-                } else {
-                   await PantryService.savePantryItems([...currentItems, newItem]);
-                }
-                
-                if (mounted) {
-                  Navigator.pop(context);
-                  _loadItems();
-                }
-              }
-            },
-            child: const Text('Adicionar'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const EnhancedAddPantryItemDialog(),
     );
+
+    if (result == true && mounted) {
+      _loadItems();
+    }
   }
 
   void _updateQuantity(PantryItem item, int change) async {
@@ -317,28 +260,103 @@ class _PantryScreenState extends State<PantryScreen> {
               ),
             ],
           ),
-      floatingActionButton: _buildFloatingActionButtons(),
+      floatingActionButton: _buildFloatingActionButton(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
+      bottomNavigationBar: _buildBottomAppBar(),
     );
   }
 
-  Widget _buildFloatingActionButtons() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        FloatingActionButton(
-          heroTag: 'scanner_fab',
-          onPressed: _addProductViaScanner,
-          backgroundColor: Colors.blue,
-          child: const Icon(Icons.qr_code_scanner, color: Colors.white),
-        ),
-        const SizedBox(height: 16),
-        FloatingActionButton(
-          heroTag: 'add_fab',
-          onPressed: _addNewItem,
-          backgroundColor: AppTheme.primaryGreen,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ],
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
+      heroTag: 'scanner_fab_pantry',
+      onPressed: _addProductViaScanner,
+      backgroundColor: Colors.blue, // Scanner Azul
+      elevation: 4,
+      shape: const CircleBorder(),
+      child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 28),
+    );
+  }
+
+  Widget _buildBottomAppBar() {
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 6.0,
+      color: Colors.white,
+      shadowColor: Colors.black26,
+      elevation: 12,
+      height: 58, // Diminuir o espaço gasto
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Favoritos
+          IconButton(
+            icon: const Icon(Icons.favorite_border, color: Colors.black54, size: 24),
+            tooltip: 'Favoritos',
+            onPressed: () {
+              showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => QuickAddFavoritesDialog(
+                  onItemsSelected: (items) async {
+                    if (items.isEmpty) return;
+                    
+                    final currentItems = await PantryService.loadPantryItems();
+                    
+                    for (final data in items) {
+                       final newItem = PantryItem(
+                          id: DateTime.now().millisecondsSinceEpoch.toString() + data['name'],
+                          name: data['name'],
+                          quantity: data['quantity'],
+                          addedDate: DateTime.now(),
+                       );
+                       
+                       // Busca independentemente de case sensitive
+                       final existingIndex = currentItems.indexWhere(
+                          (i) => i.name.toLowerCase() == newItem.name.toLowerCase()
+                       );
+                          
+                       if (existingIndex >= 0) {
+                           currentItems[existingIndex].quantity += newItem.quantity;
+                       } else {
+                           currentItems.add(newItem);
+                       }
+                    }
+                    await PantryService.savePantryItems(currentItems);
+                    
+                    if (mounted) {
+                       _loadItems();
+                       SnackBarService.success(context, '${items.length} item${items.length != 1 ? 's' : ''} adicionado${items.length != 1 ? 's' : ''} à despensa');
+                    }
+                  },
+                ),
+              );
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          
+          const Spacer(), // Empurra para a direita
+          
+          // Adicionar (+) ao lado do Scanner Maior
+          Container(
+            decoration: const BoxDecoration(
+              color: AppTheme.primaryGreen,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: _addNewItem,
+              icon: const Icon(Icons.add, color: Colors.white, size: 22),
+              tooltip: 'Adicionar manual',
+              padding: const EdgeInsets.all(8),
+              constraints: const BoxConstraints(),
+            ),
+          ),
+          const SizedBox(width: 64), // Espaço reservado para o FAB (FloatingActionButtonScanner)
+        ],
+      ),
     );
   }
 

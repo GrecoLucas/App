@@ -11,7 +11,6 @@ import '../../pantry/screens/pantry_screen.dart';
 import '../../favorites/screens/favorite_items_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../settings/screens/help_screen.dart';
-import '../../scanner/screens/scanner_page.dart';
 import '../../shopping/widgets/shopping_list_dialog.dart';
 
 enum ListSortCriteria {
@@ -536,41 +535,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            heroTag: "scanner_fab",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ScannerPage(),
-                ),
-              );
-            },
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.document_scanner),
-            tooltip: 'Escanear Fatura',
-          ),
-          const SizedBox(height: 16),
-          FloatingActionButton(
-            heroTag: "settings_fab",
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
-                ),
-              );
-            },
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            child: const Icon(Icons.settings),
-            tooltip: 'Configurações',
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        heroTag: "settings_fab",
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SettingsScreen(),
+            ),
+          );
+        },
+        backgroundColor: AppTheme.primaryGreen,
+        foregroundColor: Colors.white,
+        child: const Icon(Icons.settings),
+        tooltip: 'Configurações',
       ),
     );
   }

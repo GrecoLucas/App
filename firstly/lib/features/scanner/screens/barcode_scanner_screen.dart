@@ -106,29 +106,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
       if (!mounted) return;
 
       if (existingItem != null) {
-        // Se temos um callback de escaneamento, usamos o modo de escaneamento contínuo
-        if (widget.onItemScanned != null) {
-          widget.onItemScanned!(existingItem);
-          
-          // Feedback visual
-          if (mounted) {
-            final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(existingItem.price);
-            if (mounted) {
-              SnackBarService.success(context, '${existingItem.name} adicionado, preço: $formattedPrice');
-            }
-          }
-
-          // Reativar imediatamente para o próximo item
-          if (mounted) {
-            setState(() {
-              isScanning = true;
-              isProcessing = false;
-            });
-          }
-          return;
-        }
-
-        // Produto encontrado no banco local - mostrar dialog de confirmação/edição (comportamento antigo)
         await _showExistingItemDialog(existingItem);
         return;
       }
@@ -177,10 +154,29 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
           print('Confirmando item existente: ${updatedItem.name}');
           // Salva o item atualizado no banco local
           await BarcodeService.saveScannedItemToDatabase(updatedItem);
+          
           // Fecha o dialog
           if (mounted) Navigator.of(context).pop();
-          // Retorna o item e fecha o scanner
-          if (mounted) Navigator.of(context).pop(updatedItem);
+
+          if (widget.onItemScanned != null) {
+            // Modo contínuo
+            widget.onItemScanned!(updatedItem);
+            
+            if (mounted) {
+              final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(updatedItem.price);
+              if (mounted) {
+                SnackBarService.success(context, '${updatedItem.name} adicionado, preço: $formattedPrice');
+              }
+              
+              setState(() {
+                isScanning = true;
+                isProcessing = false;
+              });
+            }
+          } else {
+            // Modo único (fecha o scanner)
+            if (mounted) Navigator.of(context).pop(updatedItem);
+          }
         },
         onCancel: () {
           Navigator.of(context).pop();
