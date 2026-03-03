@@ -4,6 +4,7 @@ class PendingItem {
   double price;
   int quantity;
   DateTime createdAt;
+  String? barcode;
 
   PendingItem({
     String? id,
@@ -11,6 +12,7 @@ class PendingItem {
     this.price = 0.0,
     this.quantity = 1,
     DateTime? createdAt,
+    this.barcode,
   })  : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         createdAt = createdAt ?? DateTime.now();
 
@@ -21,6 +23,7 @@ class PendingItem {
       'price': price,
       'quantity': quantity,
       'createdAt': createdAt.millisecondsSinceEpoch,
+      'barcode': barcode,
     };
   }
 
@@ -31,6 +34,7 @@ class PendingItem {
       price: map['price']?.toDouble() ?? 0.0,
       quantity: map['quantity']?.toInt() ?? 1,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
+      barcode: map['barcode'],
     );
   }
 }

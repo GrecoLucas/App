@@ -9,6 +9,7 @@ class PantryItem {
   String category;
   int? autoConsumeDays; // Dias para diminuir 1 unidade
   DateTime? lastAutoConsumeDate; // Data da última diminuição/início
+  String? barcode;
 
   PantryItem({
     required this.id,
@@ -19,6 +20,7 @@ class PantryItem {
     this.category = 'Geral',
     this.autoConsumeDays,
     this.lastAutoConsumeDate,
+    this.barcode,
   });
 
   // Convert to Map for JSON storage
@@ -32,6 +34,7 @@ class PantryItem {
       'category': category,
       'autoConsumeDays': autoConsumeDays,
       'lastAutoConsumeDate': lastAutoConsumeDate?.millisecondsSinceEpoch,
+      'barcode': barcode,
     };
   }
 
@@ -50,6 +53,7 @@ class PantryItem {
       lastAutoConsumeDate: map['lastAutoConsumeDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(map['lastAutoConsumeDate'])
           : null,
+      barcode: map['barcode'],
     );
   }
 
@@ -61,6 +65,7 @@ class PantryItem {
       quantity: item.quantity,
       addedDate: DateTime.now(),
       category: 'Geral', // Default category
+      barcode: item.barcode,
     );
   }
 }

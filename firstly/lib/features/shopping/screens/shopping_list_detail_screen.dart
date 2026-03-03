@@ -95,7 +95,20 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
       
       // Lista local apenas - adicionar diretamente
       setState(() {
-        widget.shoppingList.addItem(newItem);
+        final existingIndex = widget.shoppingList.items.indexWhere((i) {
+          if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+          return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+        });
+
+        if (existingIndex >= 0) {
+          final existingItem = widget.shoppingList.items[existingIndex];
+          existingItem.quantity += newItem.quantity;
+          if (newItem.price > 0.0) {
+            existingItem.price = newItem.price;
+          }
+        } else {
+          widget.shoppingList.addItem(newItem);
+        }
       });
       
       widget.onUpdate();
@@ -262,8 +275,21 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
           
           // Lista local apenas - adicionar diretamente
           setState(() {
-            for (final item in newItems) {
-              widget.shoppingList.addItem(item);
+            for (final newItem in newItems) {
+              final existingIndex = widget.shoppingList.items.indexWhere((i) {
+                if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+                return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+              });
+
+              if (existingIndex >= 0) {
+                final existingItem = widget.shoppingList.items[existingIndex];
+                existingItem.quantity += newItem.quantity;
+                if (newItem.price > 0.0) {
+                  existingItem.price = newItem.price;
+                }
+              } else {
+                widget.shoppingList.addItem(newItem);
+              }
             }
           });
           
@@ -290,11 +316,25 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               name: name,
               price: scannedItem.price,
               quantity: scannedItem.quantity,
+              barcode: scannedItem.barcode,
             );
             
             // Lista local apenas - adicionar diretamente
             setState(() {
-              widget.shoppingList.addItem(newItem);
+              final existingIndex = widget.shoppingList.items.indexWhere((i) {
+                if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+                return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+              });
+
+              if (existingIndex >= 0) {
+                final existingItem = widget.shoppingList.items[existingIndex];
+                existingItem.quantity += newItem.quantity;
+                if (newItem.price > 0.0) {
+                  existingItem.price = newItem.price;
+                }
+              } else {
+                widget.shoppingList.addItem(newItem);
+              }
             });
             
             widget.onUpdate();
@@ -537,9 +577,24 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               name: pendingItem.name,
               price: pendingItem.price,
               quantity: pendingItem.quantity,
+              barcode: pendingItem.barcode,
             );
+            
             setState(() {
-              widget.shoppingList.addItem(newItem);
+              final existingIndex = widget.shoppingList.items.indexWhere((i) {
+                if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+                return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+              });
+
+              if (existingIndex >= 0) {
+                final existingItem = widget.shoppingList.items[existingIndex];
+                existingItem.quantity += newItem.quantity;
+                if (newItem.price > 0.0) {
+                  existingItem.price = newItem.price;
+                }
+              } else {
+                widget.shoppingList.addItem(newItem);
+              }
             });
             // Remover dos pendentes globais
             await PendingItemsService.removePendingItem(pendingItem.id);
@@ -554,15 +609,31 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             _loadPendingCount();
           },
           onAddAllToList: (List<PendingItem> items) async {
-            for (final pendingItem in items) {
-              final newItem = Item(
-                name: pendingItem.name,
-                price: pendingItem.price,
-                quantity: pendingItem.quantity,
-              );
-              widget.shoppingList.addItem(newItem);
-            }
-            setState(() {});
+            setState(() {
+              for (final pendingItem in items) {
+                final newItem = Item(
+                  name: pendingItem.name,
+                  price: pendingItem.price,
+                  quantity: pendingItem.quantity,
+                  barcode: pendingItem.barcode,
+                );
+                
+                final existingIndex = widget.shoppingList.items.indexWhere((i) {
+                  if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+                  return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+                });
+
+                if (existingIndex >= 0) {
+                  final existingItem = widget.shoppingList.items[existingIndex];
+                  existingItem.quantity += newItem.quantity;
+                  if (newItem.price > 0.0) {
+                    existingItem.price = newItem.price;
+                  }
+                } else {
+                  widget.shoppingList.addItem(newItem);
+                }
+              }
+            });
             await PendingItemsService.removePendingItems(
               items.map((i) => i.id).toList(),
             );
@@ -977,6 +1048,7 @@ Widget _buildProductsList() {
                     textScaler: TextScaler.linear(_itemScale),
                   ),
                   child: EnhancedProductCard(
+                    key: ValueKey(item.id),
                     item: item,
                     onEdit: () => _editProduct(item),
                     onDelete: () => _removeProduct(item),

@@ -86,10 +86,11 @@ class PantryService {
     int addedCount = 0;
 
     for (var newItem in itemsToAdd) {
-      // Check if item already exists (by name, case insensitive)
-      final existingIndex = currentItems.indexWhere(
-        (i) => i.name.toLowerCase() == newItem.name.toLowerCase()
-      );
+      // Check if item already exists (by barcode OR name)
+      final existingIndex = currentItems.indexWhere((i) {
+        if (newItem.barcode != null && i.barcode == newItem.barcode) return true;
+        return i.name.trim().toLowerCase() == newItem.name.trim().toLowerCase();
+      });
 
       if (existingIndex >= 0) {
         // Update quantity if exists

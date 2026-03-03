@@ -166,12 +166,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
               final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(updatedItem.price);
               if (mounted) {
                 SnackBarService.success(context, '${updatedItem.name} adicionado, preço: $formattedPrice');
+                Navigator.of(context).pop(); // Auto fecha o scanner e vai para a lista
               }
-              
-              setState(() {
-                isScanning = true;
-                isProcessing = false;
-              });
             }
           } else {
             // Modo único (fecha o scanner)
@@ -214,12 +210,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
               final formattedPrice = await context.read<AppSettingsProvider>().formatPriceWithConversion(newItem.price);
               if (mounted) {
                 SnackBarService.success(context, '${newItem.name} adicionado, preço: $formattedPrice');
+                Navigator.of(context).pop(); // Auto fecha o scanner e vai para a lista
               }
-              
-              setState(() {
-                isScanning = true;
-                isProcessing = false;
-              });
             }
           } else {
             // Modo único (fecha o scanner)

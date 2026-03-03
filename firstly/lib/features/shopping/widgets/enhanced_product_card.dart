@@ -75,17 +75,21 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 400;
     
+    final bool needsPantry = widget.item.isCompleted && !widget.item.isAddedToPantry;
+
     return Container(
       margin: EdgeInsets.only(bottom: AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)), // Reduced margin
       decoration: BoxDecoration(
-        gradient: AppTheme.cardGradient,
+        color: needsPantry ? Colors.yellow.shade100 : null,
+        gradient: needsPantry ? null : AppTheme.cardGradient,
+        border: needsPantry ? Border.all(color: Colors.amber.shade600, width: 1.5) : null,
         borderRadius: BorderRadius.circular(AppConstants.radiusLarge),
         boxShadow: const [AppStyles.softShadow],
       ),
       child: Material(
         color: Colors.transparent,
         child: Opacity(
-          opacity: widget.item.isCompleted ? 0.6 : 1.0,
+          opacity: widget.item.isCompleted ? (needsPantry ? 1.0 : 0.6) : 1.0,
           child: Padding(
             padding: EdgeInsets.all(AppConstants.getResponsivePadding(context, AppConstants.paddingSmall)), // Reduced padding
             child: Column(
@@ -102,10 +106,10 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                             widget.onToggle!();
                           }
                         },
-                        activeColor: AppTheme.primaryGreen,
+                        activeColor: needsPantry ? Colors.amber.shade900 : AppTheme.primaryGreen,
                         checkColor: Colors.white,
                         side: BorderSide(
-                          color: AppTheme.primaryGreen.withOpacity(0.6),
+                          color: needsPantry ? Colors.amber.shade900 : AppTheme.primaryGreen.withOpacity(0.6),
                           width: 2,
                         ),
                         shape: RoundedRectangleBorder(
@@ -124,7 +128,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                           child: Text(
                             '${widget.item.quantity}x',
                             style: TextStyle(
-                              color: AppTheme.primaryGreen,
+                              color: needsPantry ? Colors.amber.shade900 : AppTheme.primaryGreen,
                               fontWeight: FontWeight.w800,
                               fontSize: isSmallScreen ? 14 : 15,
                             ),
@@ -163,7 +167,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                                             style: AppStyles.priceStyle.copyWith(
                                               fontSize: AppConstants.getResponsiveFontSize(context, AppStyles.priceStyle.fontSize!),
                                               fontWeight: FontWeight.w700,
-                                              color: AppTheme.primaryGreen,
+                                              color: needsPantry ? Colors.amber.shade900 : AppTheme.primaryGreen,
                                             ),
                                           );
                                         }
