@@ -271,6 +271,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
             name: data['name'],
             price: data['price'],
             quantity: data['quantity'],
+            imageUrl: data['imageUrl'],
           )).toList();
           
           // Lista local apenas - adicionar diretamente
@@ -317,6 +318,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
               price: scannedItem.price,
               quantity: scannedItem.quantity,
               barcode: scannedItem.barcode,
+              imageUrl: scannedItem.imageUrl,
             );
             
             // Lista local apenas - adicionar diretamente

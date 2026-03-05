@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../../../core/theme/app_theme.dart';
-
+import '../../../core/widgets/product_image_widget.dart';
 
 class FavoriteItemsDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onItemSelected;
@@ -265,27 +265,35 @@ class _FavoriteItemsDialogState extends State<FavoriteItemsDialog> {
             padding: EdgeInsets.all(AppConstants.paddingMedium),
             child: Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryGreen.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                  ProductImageWidget(
+                    imageUrl: item.imageUrl,
+                    width: 48,
+                    height: 48,
+                    borderRadius: AppConstants.radiusMedium,
+                  )
+                else
+                  Container(
+                    width: 48,
+                    height: 48,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGreen.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.shopping_basket,
+                      color: Colors.white,
+                      size: 24,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.shopping_basket,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
                 SizedBox(width: AppConstants.paddingMedium),
                 Expanded(
                   child: Column(

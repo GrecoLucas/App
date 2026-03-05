@@ -5,6 +5,7 @@ class ScannedItem {
   final double price;
   final int quantity;
   final DateTime scannedAt;
+  final String? imageUrl;
 
   ScannedItem({
     required this.id,
@@ -13,6 +14,7 @@ class ScannedItem {
     required this.price,
     required this.quantity,
     required this.scannedAt,
+    this.imageUrl,
   });
 
   // Cria um item escaneado com valores padrão
@@ -21,6 +23,7 @@ class ScannedItem {
     required this.name,
     required this.price,
     required this.quantity,
+    this.imageUrl,
   }) : id = DateTime.now().millisecondsSinceEpoch.toString(),
        scannedAt = DateTime.now();
 
@@ -33,6 +36,7 @@ class ScannedItem {
       'price': price,
       'quantity': quantity,
       'scannedAt': scannedAt.millisecondsSinceEpoch,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -45,6 +49,7 @@ class ScannedItem {
       price: map['price']?.toDouble() ?? 0.0,
       quantity: map['quantity']?.toInt() ?? 1,
       scannedAt: DateTime.fromMillisecondsSinceEpoch(map['scannedAt']),
+      imageUrl: map['imageUrl'],
     );
   }
 
@@ -81,6 +86,7 @@ class ScannedItem {
     double? price,
     int? quantity,
     DateTime? scannedAt,
+    String? imageUrl,
   }) {
     return ScannedItem(
       id: id ?? this.id,
@@ -89,6 +95,7 @@ class ScannedItem {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       scannedAt: scannedAt ?? this.scannedAt,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 

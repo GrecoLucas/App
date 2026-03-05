@@ -192,12 +192,13 @@ class FavoriteItemsService {
   }
 
   /// Cria um item favorito a partir de um item da lista
-  static FavoriteItem createFavoriteFromItem(String name, double price, int quantity) {
+  static FavoriteItem createFavoriteFromItem(String name, double price, int quantity, {String? imageUrl}) {
     return FavoriteItem(
       name: name,
       defaultPrice: price,
       defaultQuantity: quantity,
       usageCount: 1,
+      imageUrl: imageUrl,
     );
   }
 }

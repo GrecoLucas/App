@@ -8,6 +8,7 @@ class Item {
   bool isPending;
   DateTime lastModified;
   String? barcode;
+  String? imageUrl;
 
   Item({
     String? id,
@@ -19,6 +20,7 @@ class Item {
     this.isPending = false,
     DateTime? lastModified,
     this.barcode,
+    this.imageUrl,
   }) : id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
        lastModified = lastModified ?? DateTime.now();
 
@@ -32,6 +34,7 @@ class Item {
       isAddedToPantry: isAddedToPantry,
       isPending: isPending,
       barcode: barcode,
+      imageUrl: imageUrl,
       lastModified: DateTime.now(),
     );
   }
@@ -47,6 +50,7 @@ class Item {
       'isAddedToPantry': isAddedToPantry,
       'isPending': isPending,
       'barcode': barcode,
+      'imageUrl': imageUrl,
       'lastModified': lastModified.toIso8601String(),
     };
   }
@@ -65,6 +69,7 @@ class Item {
       isAddedToPantry: map['isAddedToPantry'] ?? false,
       isPending: map['isPending'] ?? false,
       barcode: map['barcode'],
+      imageUrl: map['imageUrl'],
       lastModified: map['lastModified'] != null 
           ? DateTime.tryParse(map['lastModified']) ?? DateTime.now()
           : DateTime.now(),

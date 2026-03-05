@@ -4,6 +4,8 @@ import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cyclic_quantity_selector.dart';
+import '../../../core/widgets/product_image_widget.dart';
+
 class QuickAddFavoritesDialog extends StatefulWidget {
   final Function(List<Map<String, dynamic>>) onItemsSelected;
 
@@ -305,18 +307,26 @@ class _QuickAddFavoritesDialogState extends State<QuickAddFavoritesDialog> {
                     const SizedBox(width: 12),
                     
                     // Ícone do item
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? Colors.white : AppTheme.softGrey,
-                        borderRadius: BorderRadius.circular(8),
+                    if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                      ProductImageWidget(
+                        imageUrl: item.imageUrl,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 8,
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.white : AppTheme.softGrey,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.shopping_basket,
+                          color: isSelected ? AppTheme.primaryGreen : Colors.grey[600],
+                          size: 20,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.shopping_basket,
-                        color: isSelected ? AppTheme.primaryGreen : Colors.grey[600],
-                        size: 20,
-                      ),
-                    ),
                     const SizedBox(width: 12),
                     
                     // Informações

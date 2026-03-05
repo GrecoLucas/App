@@ -3,7 +3,7 @@ import '../models/favorite_item.dart';
 import '../services/favorite_items_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
-
+import '../../../core/widgets/product_image_widget.dart';
 
 class FavoriteItemsScreen extends StatefulWidget {
   const FavoriteItemsScreen({super.key});
@@ -439,7 +439,15 @@ class _FavoriteItemsScreenState extends State<FavoriteItemsScreen> {
           padding: const EdgeInsets.all(AppConstants.paddingMedium),
           child: Row(
             children: [
-              _buildDefaultIcon(),
+              if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                ProductImageWidget(
+                  imageUrl: item.imageUrl,
+                  width: 48,
+                  height: 48,
+                  borderRadius: AppConstants.radiusMedium,
+                )
+              else
+                _buildDefaultIcon(),
               const SizedBox(width: AppConstants.paddingMedium),
               Expanded(
                 child: Column(

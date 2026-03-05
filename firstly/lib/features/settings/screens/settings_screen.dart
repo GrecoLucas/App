@@ -8,7 +8,7 @@ import '../../../core/services/app_settings_service.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/snackbar_service.dart';
-
+import '../../../core/widgets/product_image_widget.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -150,6 +150,22 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
 
   void _showSnackBar(String message) {
     SnackBarService.success(context, message);
+  }
+
+  void _editScannedItem(ScannedItem item) async {
+    final updatedItem = await showModalBottomSheet<ScannedItem>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _EditScannedItemBottomSheet(item: item),
+    );
+
+    if (updatedItem != null) {
+      // Salva o item atualizado no banco de dados (por código de barras)
+      await BarcodeService.saveScannedItemToDatabase(updatedItem);
+      _loadData();
+      _showSnackBar('Item "${updatedItem.name}" atualizado');
+    }
   }
 
   @override
@@ -354,20 +370,28 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
         padding: const EdgeInsets.all(AppConstants.paddingMedium),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppConstants.paddingMedium),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2196F3).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+              ProductImageWidget(
+                imageUrl: item.imageUrl,
+                width: 48,
+                height: 48,
+                borderRadius: AppConstants.radiusMedium,
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2196F3).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                child: const Icon(
+                  Icons.qr_code,
+                  color: Color(0xFF2196F3),
+                  size: AppConstants.iconLarge,
+                ),
               ),
-              child: const Icon(
-                Icons.qr_code,
-                color: Color(0xFF2196F3),
-                size: AppConstants.iconLarge,
-              ),
-            ),
             const SizedBox(width: AppConstants.paddingMedium),
-            Expanded(
+            Expanded( // Prevents pixel overflow on name
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -376,9 +400,14 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                     style: AppStyles.bodyLarge.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                   const SizedBox(height: 4),
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppConstants.paddingSmall,
+                    runSpacing: 4,
                     children: [
                       Text(
                         item.formattedPrice,
@@ -387,12 +416,10 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      const SizedBox(width: AppConstants.paddingSmall),
                       Text(
                         'Qtd: ${item.quantity}',
                         style: AppStyles.captionGrey,
                       ),
-                      const SizedBox(width: AppConstants.paddingSmall),
                       Text(
                         item.formattedDate,
                         style: AppStyles.captionGrey,
@@ -406,18 +433,38 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                       fontSize: 10,
                       fontFamily: 'monospace',
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            IconButton(
-              onPressed: () => _deleteScannedItem(item),
-              icon: Icon(
-                Icons.delete_outline,
-                color: Colors.grey[600],
-                size: AppConstants.iconMedium,
-              ),
-              tooltip: 'Remover',
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => _editScannedItem(item),
+                  icon: Icon(
+                    Icons.edit_outlined,
+                    color: Colors.grey[600],
+                    size: AppConstants.iconMedium,
+                  ),
+                  tooltip: 'Editar',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () => _deleteScannedItem(item),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.grey[600],
+                    size: AppConstants.iconMedium,
+                  ),
+                  tooltip: 'Remover',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
             ),
           ],
         ),
@@ -437,19 +484,27 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
         padding: const EdgeInsets.all(AppConstants.paddingMedium),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+              ProductImageWidget(
+                imageUrl: item.imageUrl,
+                width: 56,
+                height: 56,
+                borderRadius: AppConstants.radiusMedium,
+              )
+            else
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+                child: Icon(
+                  Icons.shopping_bag_outlined,
+                  color: AppTheme.primaryGreen,
+                  size: 28,
+                ),
               ),
-              child: Icon(
-                Icons.shopping_bag_outlined,
-                color: AppTheme.primaryGreen,
-                size: 28,
-              ),
-            ),
             const SizedBox(width: AppConstants.paddingMedium),
             Expanded(
               child: Column(
@@ -549,6 +604,23 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
                 title: 'Moeda',
                 child: _buildPrimaryCurrencySelector(settingsProvider),
               ),
+
+              const SizedBox(height: AppConstants.paddingLarge),
+
+              // Seção Visual
+              _buildPreferenceSection(
+                icon: Icons.visibility,
+                title: 'Visual',
+                child: SwitchListTile(
+                  title: const Text('Mostrar fotos dos produtos'),
+                  subtitle: const Text('Exibe imagens na lista e no scanner'),
+                  value: settingsProvider.showProductImages,
+                  activeColor: AppTheme.primaryGreen,
+                  onChanged: (bool value) {
+                    settingsProvider.setShowProductImages(value);
+                  },
+                ),
+              ),
               
               // Espaço extra no final para evitar overflow
               const SizedBox(height: 100),
@@ -640,6 +712,163 @@ class _SettingsScreenState extends State<SettingsScreen> with TickerProviderStat
           ),
         );
       }).toList(),
+    );
+  }
+}
+
+class _EditScannedItemBottomSheet extends StatefulWidget {
+  final ScannedItem item;
+
+  const _EditScannedItemBottomSheet({required this.item});
+
+  @override
+  State<_EditScannedItemBottomSheet> createState() => _EditScannedItemBottomSheetState();
+}
+
+class _EditScannedItemBottomSheetState extends State<_EditScannedItemBottomSheet> {
+  late TextEditingController _nameController;
+  late TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.item.name);
+    _priceController = TextEditingController(text: widget.item.price.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _priceController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Pegar o espaçamento do teclado e altura da tela
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppConstants.radiusXLarge),
+          topRight: Radius.circular(AppConstants.radiusXLarge),
+        ),
+      ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9, // Limite de altura
+      ),
+      padding: EdgeInsets.only(
+        bottom: bottomInset > 0 ? bottomInset + AppConstants.paddingMedium : AppConstants.paddingXLarge, // Extra padding no fundo
+        left: AppConstants.paddingLarge,
+        right: AppConstants.paddingLarge,
+        top: AppConstants.paddingMedium,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drag handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppConstants.paddingLarge),
+          
+          Row(
+            children: [
+               Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentBlue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(AppConstants.radiusSmall),
+                ),
+                child: const Icon(Icons.edit, color: AppTheme.accentBlue, size: 24),
+              ),
+              const SizedBox(width: AppConstants.paddingMedium),
+              const Expanded(
+                child: Text('Editar Scanner', style: AppStyles.headingMedium),
+              ),
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              )
+            ],
+          ),
+          const SizedBox(height: AppConstants.paddingLarge),
+
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Nome do Produto',
+                      hintText: 'Ex: Maçã Fuji',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: AppTheme.softGrey,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.paddingMedium),
+
+                  TextField(
+                    controller: _priceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      labelText: 'Preço',
+                      hintText: '0.00',
+                      prefixIcon: const Icon(Icons.euro, size: 20),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: AppTheme.softGrey,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.paddingMedium),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AppConstants.paddingXLarge),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: () {
+                final price = double.tryParse(_priceController.text.replaceAll(',', '.')) ?? 0.0;
+                final updated = widget.item.copyWith(
+                  name: _nameController.text.trim(),
+                  price: price,
+                  imageUrl: widget.item.imageUrl,
+                );
+                Navigator.pop(context, updated);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                ),
+              ),
+              child: const Text('Salvar Alterações', style: TextStyle(fontSize: 16)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../../core/providers/app_settings_provider.dart';
 import '../../favorites/services/favorite_items_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/product_image_widget.dart';
 
 class EnhancedProductCard extends StatefulWidget {
   final Item item;
@@ -62,6 +63,7 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
         widget.item.name,
         widget.item.price,
         widget.item.quantity,
+        imageUrl: widget.item.imageUrl,
       );
       
       await FavoriteItemsService.addFavoriteItem(favoriteItem);
@@ -135,6 +137,18 @@ class _EnhancedProductCardState extends State<EnhancedProductCard> {
                           ),
                         ),
                         SizedBox(width: AppConstants.getResponsivePadding(context, 12)),
+                        
+                        // Imagem do Produto
+                        if (widget.item.imageUrl != null && widget.item.imageUrl!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 12),
+                            child: ProductImageWidget(
+                              imageUrl: widget.item.imageUrl,
+                              width: 48,
+                              height: 48,
+                              borderRadius: 8,
+                            ),
+                          ),
                         
                         // Nome e Preço
                         Expanded(

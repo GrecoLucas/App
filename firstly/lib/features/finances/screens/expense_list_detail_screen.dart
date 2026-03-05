@@ -5,6 +5,7 @@ import '../../scanner/services/barcode_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../scanner/screens/barcode_scanner_screen.dart';
+import '../../../core/widgets/product_image_widget.dart';
 
 class ExpenseListDetailScreen extends StatefulWidget {
   final ExpenseList expenseList;
@@ -500,18 +501,26 @@ class _ExpenseListDetailScreenState extends State<ExpenseListDetailScreen> {
                   padding: const EdgeInsets.all(AppConstants.paddingLarge),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(AppConstants.paddingMedium),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightGreen,
-                          borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                      if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                        ProductImageWidget(
+                          imageUrl: item.imageUrl,
+                          width: 48,
+                          height: 48,
+                          borderRadius: AppConstants.radiusMedium,
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.all(AppConstants.paddingMedium),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGreen,
+                            borderRadius: BorderRadius.circular(AppConstants.radiusMedium),
+                          ),
+                          child: Icon(
+                            Icons.qr_code,
+                            color: AppTheme.primaryGreen,
+                            size: AppConstants.iconMedium,
+                          ),
                         ),
-                        child: Icon(
-                          Icons.qr_code,
-                          color: AppTheme.primaryGreen,
-                          size: AppConstants.iconMedium,
-                        ),
-                      ),
                       const SizedBox(width: AppConstants.paddingLarge),
                       Expanded(
                         child: Column(

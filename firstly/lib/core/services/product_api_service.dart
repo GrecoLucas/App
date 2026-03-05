@@ -5,13 +5,13 @@ class ProductInfo {
   final String name;
   final String? brand;
   final String? category;
-
+  final String? imageUrl;
 
   ProductInfo({
     required this.name,
     this.brand,
     this.category,
-
+    this.imageUrl,
   });
 
   factory ProductInfo.fromOpenFoodFacts(Map<String, dynamic> json) {
@@ -27,6 +27,7 @@ class ProductInfo {
       name: name,
       brand: product['brands'],
       category: product['categories'],
+      imageUrl: product['image_url'] ?? product['image_front_url'],
     );
   }
 
@@ -37,10 +38,17 @@ class ProductInfo {
     }
 
     final item = items.first as Map<String, dynamic>;
+    
+    String? imageUrl;
+    if (item['images'] != null && (item['images'] as List).isNotEmpty) {
+      imageUrl = (item['images'] as List).first as String?;
+    }
+
     return ProductInfo(
       name: item['title'] ?? 'Produto desconhecido',
       brand: item['brand'],
       category: item['category'],
+      imageUrl: imageUrl,
     );
   }
 }

@@ -6,6 +6,7 @@ class FavoriteItem {
   int usageCount; // Contador de quantas vezes foi usado
   DateTime lastUsed;
   DateTime createdAt;
+  String? imageUrl;
 
   FavoriteItem({
     String? id,
@@ -15,6 +16,7 @@ class FavoriteItem {
     this.usageCount = 0,
     DateTime? lastUsed,
     DateTime? createdAt,
+    this.imageUrl,
   }) : 
     id = id ?? DateTime.now().millisecondsSinceEpoch.toString(),
     lastUsed = lastUsed ?? DateTime.now(),
@@ -43,6 +45,7 @@ class FavoriteItem {
       'usageCount': usageCount,
       'lastUsed': lastUsed.millisecondsSinceEpoch,
       'createdAt': createdAt.millisecondsSinceEpoch,
+      'imageUrl': imageUrl,
     };
   }
 
@@ -56,6 +59,7 @@ class FavoriteItem {
       usageCount: map['usageCount']?.toInt() ?? 0,
       lastUsed: DateTime.fromMillisecondsSinceEpoch(map['lastUsed'] ?? 0),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
+      imageUrl: map['imageUrl'],
     );
   }
 
@@ -65,6 +69,7 @@ class FavoriteItem {
       'name': name,
       'price': defaultPrice,
       'quantity': defaultQuantity,
+      'imageUrl': imageUrl,
     };
   }
 }

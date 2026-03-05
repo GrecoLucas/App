@@ -20,6 +20,7 @@ class AppSettingsService {
   static const String _convertedCurrencyKey = 'app_converted_currency';
   static const String _exchangeRatesKey = 'app_exchange_rates';
   static const String _lastUpdateKey = 'app_rates_last_update';
+  static const String _showProductImagesKey = 'app_show_product_images';
 
   // Configurações padrão
   static const Currency _defaultPrimaryCurrency = Currency.eur;
@@ -42,6 +43,16 @@ class AppSettingsService {
       await prefs.setString(_convertedCurrencyKey, currency.name);
     } catch (e) {
       print('Erro ao salvar moeda convertida: $e');
+    }
+  }
+
+  /// Salva a preferência de mostrar imagens
+  static Future<void> saveShowProductImages(bool show) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_showProductImagesKey, show);
+    } catch (e) {
+      print('Erro ao salvar preferência de imagens: $e');
     }
   }
 
@@ -88,6 +99,17 @@ class AppSettingsService {
     } catch (e) {
       print('Erro ao carregar moeda convertida: $e');
       return _defaultConvertedCurrency;
+    }
+  }
+
+  /// Carrega a preferência de mostrar imagens
+  static Future<bool> loadShowProductImages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_showProductImagesKey) ?? true;
+    } catch (e) {
+      print('Erro ao carregar preferência de imagens: $e');
+      return true;
     }
   }
 

@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../scanner/screens/barcode_scanner_screen.dart';
 import '../../favorites/widgets/quick_add_favorites_dialog.dart';
 import '../widgets/enhanced_add_pantry_item_dialog.dart';
+import '../../../core/widgets/product_image_widget.dart';
 
 enum PantrySortOption { name, quantityAsc, quantityDesc }
 
@@ -163,6 +164,7 @@ class _PantryScreenState extends State<PantryScreen> {
                 name: name,
                 quantity: scannedItem.quantity,
                 addedDate: DateTime.now(),
+                imageUrl: scannedItem.imageUrl,
               );
                await PantryService.savePantryItems([...currentItems, newItem]);
                
@@ -308,9 +310,10 @@ class _PantryScreenState extends State<PantryScreen> {
                     for (final data in items) {
                        final newItem = PantryItem(
                           id: DateTime.now().millisecondsSinceEpoch.toString() + data['name'],
-                          name: data['name'],
-                          quantity: data['quantity'],
-                          addedDate: DateTime.now(),
+                           name: data['name'],
+                           quantity: data['quantity'],
+                           addedDate: DateTime.now(),
+                           imageUrl: data['imageUrl'],
                        );
                        
                        // Busca independentemente de case sensitive

@@ -7,6 +7,7 @@ class AppSettingsProvider extends ChangeNotifier {
   Map<String, double> _exchangeRates = {};
   bool _isLoadingRates = false;
   bool _isInitialized = false;
+  bool _showProductImages = true;
   
   AppSettingsProvider() {
     initialize();
@@ -17,6 +18,7 @@ class AppSettingsProvider extends ChangeNotifier {
   Map<String, double> get exchangeRates => _exchangeRates;
   bool get isLoadingRates => _isLoadingRates;
   bool get isInitialized => _isInitialized;
+  bool get showProductImages => _showProductImages;
   
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -24,6 +26,7 @@ class AppSettingsProvider extends ChangeNotifier {
     try {
       _primaryCurrency = await AppSettingsService.loadPrimaryCurrency();
       _convertedCurrency = await AppSettingsService.loadConvertedCurrency();
+      _showProductImages = await AppSettingsService.loadShowProductImages();
       _isInitialized = true;
       notifyListeners();
       
@@ -84,6 +87,18 @@ class AppSettingsProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('Erro ao atualizar moeda convertida: $e');
+    }
+  }
+  
+  Future<void> setShowProductImages(bool value) async {
+    if (_showProductImages == value) return;
+    
+    try {
+      await AppSettingsService.saveShowProductImages(value);
+      _showProductImages = value;
+      notifyListeners();
+    } catch (e) {
+      print('Erro ao atualizar preferência de imagens: $e');
     }
   }
   

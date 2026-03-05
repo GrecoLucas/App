@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/app_settings_provider.dart';
 import '../../../core/widgets/cyclic_quantity_selector.dart';
+import '../../../core/widgets/product_image_widget.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   final Function(ScannedItem)? onItemScanned;
@@ -125,9 +126,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
           suggestedName = null;
         }
       }
+      String? suggestedImageUrl = productInfo?.imageUrl;
 
       // Produto encontrado na API ou não - mostrar dialog
-      await _showNewItemDialog(scannedBarcode, suggestedName: suggestedName);
+      await _showNewItemDialog(
+        scannedBarcode, 
+        suggestedName: suggestedName,
+        suggestedImageUrl: suggestedImageUrl,
+      );
       
     } catch (e) {
       print('Erro ao processar código de barras: $e');
@@ -187,13 +193,14 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> with Widget
     );
   }
 
-  Future<void> _showNewItemDialog(String barcode, {String? suggestedName}) async {
+  Future<void> _showNewItemDialog(String barcode, {String? suggestedName, String? suggestedImageUrl}) async {
     await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => _NewItemDialog(
         barcode: barcode,
         suggestedName: suggestedName,
+        suggestedImageUrl: suggestedImageUrl,
         onSave: (newItem) async {
           print('Salvando novo item: ${newItem.name}');
           // Salva o novo item no banco local
@@ -419,6 +426,18 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (widget.item.imageUrl != null && widget.item.imageUrl!.isNotEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppConstants.paddingLarge),
+                          child: ProductImageWidget(
+                            imageUrl: widget.item.imageUrl,
+                            width: 120,
+                            height: 120,
+                            borderRadius: AppConstants.radiusMedium,
+                          ),
+                        ),
+                      ),
                     TextField(
                       controller: nameController,
                       onChanged: (value) => _checkPantry(),
@@ -551,6 +570,7 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
                       name: nameController.text.trim(),
                       price: price,
                       quantity: quantity,
+                      imageUrl: widget.item.imageUrl,
                     );
 
                     widget.onConfirm(updatedItem);
@@ -582,12 +602,14 @@ class _ItemFoundDialogState extends State<_ItemFoundDialog> {
 class _NewItemDialog extends StatefulWidget {
   final String barcode;
   final String? suggestedName;
+  final String? suggestedImageUrl;
   final Function(ScannedItem) onSave;
   final VoidCallback onCancel;
 
   const _NewItemDialog({
     required this.barcode,
     this.suggestedName,
+    this.suggestedImageUrl,
     required this.onSave,
     required this.onCancel,
   });
@@ -709,6 +731,18 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (widget.suggestedImageUrl != null && widget.suggestedImageUrl!.isNotEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: AppConstants.paddingLarge),
+                          child: ProductImageWidget(
+                            imageUrl: widget.suggestedImageUrl,
+                            width: 120,
+                            height: 120,
+                            borderRadius: AppConstants.radiusMedium,
+                          ),
+                        ),
+                      ),
                     TextField(
                       controller: nameController,
                       onChanged: (value) => _checkPantry(),
@@ -849,6 +883,7 @@ class _NewItemDialogState extends State<_NewItemDialog> {
                       name: nameController.text.trim(),
                       price: price,
                       quantity: quantity,
+                      imageUrl: widget.suggestedImageUrl,
                     );
 
                     widget.onSave(newItem);
