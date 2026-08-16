@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../widgets/enhanced_add_product_dialog.dart';
 import '../widgets/enhanced_product_card.dart';
 import '../../favorites/widgets/quick_add_favorites_dialog.dart';
-import '../widgets/sort_options_widget.dart';
+
 import '../../../core/services/storage_service.dart';
 import '../../../core/services/snackbar_service.dart';
 import '../../pantry/services/pantry_service.dart';
@@ -33,7 +33,6 @@ class ShoppingListDetailScreen extends StatefulWidget {
 
 class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
 
-  SortCriteria _currentSortCriteria = SortCriteria.smart;
   double _itemScale = 1.0;
   int _currentTab = 0; // 0: Comprando, 1: Comprado
   int _globalPendingCount = 0;
@@ -41,7 +40,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSortPreference();
     _loadPendingCount();
   }
 
@@ -55,21 +53,6 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     widget.onUpdate();
   }
 
-  // Carrega a preferência de ordenação salva
-  void _loadSortPreference() async {
-    final sortCriteria = await StorageService.loadSortPreference();
-    setState(() {
-      _currentSortCriteria = sortCriteria;
-    });
-  }
-
-  // Atualiza o critério de ordenação
-  void _updateSortCriteria(SortCriteria criteria) async {
-    setState(() {
-      _currentSortCriteria = criteria;
-    });
-    await StorageService.saveSortPreference(criteria);
-  }
 
   void _updateItemScale(double newScale) {
     setState(() {
@@ -500,10 +483,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                 ),
               ],
             ),
-            SortOptionsWidget(
-              currentCriteria: _currentSortCriteria,
-              onSortChanged: _updateSortCriteria,
-            ),
+
           ],
           const SizedBox(width: AppConstants.paddingSmall),
         ],
@@ -972,7 +952,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
   }
 
 Widget _buildProductsList() {
-    final sortedItems = widget.shoppingList.getSortedItems(_currentSortCriteria);
+    final sortedItems = widget.shoppingList.items;
     final filteredItems = sortedItems.where((item) {
       if (_currentTab == 0) return !item.isCompleted;
       return item.isCompleted;
