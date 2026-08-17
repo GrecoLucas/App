@@ -95,11 +95,11 @@ class AppConstants {
   static const double iconXLarge = 42.0; // Reduzido
 
   // Tamanhos de fonte responsivos
-  static const double fontSmall = 12.0;
-  static const double fontMedium = 14.0; // Reduzido
-  static const double fontLarge = 16.0; // Reduzido
-  static const double fontXLarge = 20.0; // Reduzido
-  static const double fontXXLarge = 26.0; // Reduzido
+  static const double fontSmall = 14.0;
+  static const double fontMedium = 16.0; // Aumentado
+  static const double fontLarge = 18.0; // Aumentado
+  static const double fontXLarge = 24.0; // Aumentado
+  static const double fontXXLarge = 30.0; // Aumentado
 
   // Animações
   static const Duration animationFast = Duration(milliseconds: 200);

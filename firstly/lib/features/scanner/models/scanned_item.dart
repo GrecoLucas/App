@@ -6,6 +6,9 @@ class ScannedItem {
   final int quantity;
   final DateTime scannedAt;
   final String? imageUrl;
+  final bool isWeighed;
+  final double? weight;
+  final double? pricePerKg;
 
   ScannedItem({
     required this.id,
@@ -15,6 +18,9 @@ class ScannedItem {
     required this.quantity,
     required this.scannedAt,
     this.imageUrl,
+    this.isWeighed = false,
+    this.weight,
+    this.pricePerKg,
   });
 
   // Cria um item escaneado com valores padrão
@@ -24,6 +30,9 @@ class ScannedItem {
     required this.price,
     required this.quantity,
     this.imageUrl,
+    this.isWeighed = false,
+    this.weight,
+    this.pricePerKg,
   }) : id = DateTime.now().millisecondsSinceEpoch.toString(),
        scannedAt = DateTime.now();
 
@@ -37,6 +46,9 @@ class ScannedItem {
       'quantity': quantity,
       'scannedAt': scannedAt.millisecondsSinceEpoch,
       'imageUrl': imageUrl,
+      'isWeighed': isWeighed,
+      'weight': weight,
+      'pricePerKg': pricePerKg,
     };
   }
 
@@ -50,6 +62,9 @@ class ScannedItem {
       quantity: map['quantity']?.toInt() ?? 1,
       scannedAt: DateTime.fromMillisecondsSinceEpoch(map['scannedAt']),
       imageUrl: map['imageUrl'],
+      isWeighed: map['isWeighed'] ?? false,
+      weight: map['weight']?.toDouble(),
+      pricePerKg: map['pricePerKg']?.toDouble(),
     );
   }
 
@@ -87,6 +102,9 @@ class ScannedItem {
     int? quantity,
     DateTime? scannedAt,
     String? imageUrl,
+    bool? isWeighed,
+    double? weight,
+    double? pricePerKg,
   }) {
     return ScannedItem(
       id: id ?? this.id,
@@ -96,6 +114,9 @@ class ScannedItem {
       quantity: quantity ?? this.quantity,
       scannedAt: scannedAt ?? this.scannedAt,
       imageUrl: imageUrl ?? this.imageUrl,
+      isWeighed: isWeighed ?? this.isWeighed,
+      weight: weight ?? this.weight,
+      pricePerKg: pricePerKg ?? this.pricePerKg,
     );
   }
 
@@ -112,6 +133,6 @@ class ScannedItem {
 
   @override
   String toString() {
-    return 'ScannedItem(id: $id, barcode: $barcode, name: $name, price: $price, quantity: $quantity)';
+    return 'ScannedItem(id: $id, barcode: $barcode, name: $name, price: $price, quantity: $quantity, isWeighed: $isWeighed, weight: $weight, pricePerKg: $pricePerKg)';
   }
 }
